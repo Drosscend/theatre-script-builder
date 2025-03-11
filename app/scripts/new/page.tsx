@@ -1,17 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { createScript } from "@/app/actions/script";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
+import { z } from "zod";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner"
 
 const formSchema = z.object({
   name: z.string().min(1, "Le titre est requis"),
@@ -45,8 +45,8 @@ export default function NewScriptPage() {
         router.push(`/scripts/${result.data.id}`);
       } else {
         toast.error("Erreur", {
-          description: Array.isArray(result.error) 
-            ? result.error.map(issue => issue.message).join(", ") 
+          description: Array.isArray(result.error)
+            ? result.error.map((issue) => issue.message).join(", ")
             : result.error || "Une erreur est survenue lors de la création du script",
         });
       }
@@ -64,9 +64,7 @@ export default function NewScriptPage() {
       <Card className="mx-auto max-w-2xl">
         <CardHeader>
           <CardTitle>Créer un nouveau script</CardTitle>
-          <CardDescription>
-            Commencez par donner un titre et une description à votre script
-          </CardDescription>
+          <CardDescription>Commencez par donner un titre et une description à votre script</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -80,9 +78,7 @@ export default function NewScriptPage() {
                     <FormControl>
                       <Input placeholder="Titre du script" {...field} />
                     </FormControl>
-                    <FormDescription>
-                      Le titre principal de votre script
-                    </FormDescription>
+                    <FormDescription>Le titre principal de votre script</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -95,27 +91,16 @@ export default function NewScriptPage() {
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="Description du script (optionnelle)"
-                        className="min-h-[100px]"
-                        {...field}
-                      />
+                      <Textarea placeholder="Description du script (optionnelle)" className="min-h-[100px]" {...field} />
                     </FormControl>
-                    <FormDescription>
-                      Une brève description de votre script
-                    </FormDescription>
+                    <FormDescription>Une brève description de votre script</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
               <div className="flex justify-end space-x-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.back()}
-                  disabled={isSubmitting}
-                >
+                <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
                   Annuler
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
@@ -128,4 +113,4 @@ export default function NewScriptPage() {
       </Card>
     </div>
   );
-} 
+}

@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 
 // Schémas de validation
@@ -21,47 +21,57 @@ const scriptItemSchema = z.object({
   type: z.enum(["dialogue", "narration", "lighting", "sound", "image", "staging", "movement"]),
   text: z.string().optional(),
   characterId: z.string().optional(),
-  
+
   // Champs spécifiques aux types
-  lighting: z.object({
-    position: z.string(),
-    color: z.string(),
-  }).optional(),
-  
-  sound: z.object({
-    url: z.string(),
-    timecode: z.string(),
-    description: z.string().optional(),
-  }).optional(),
-  
-  image: z.object({
-    url: z.string(),
-    caption: z.string().optional(),
-  }).optional(),
-  
-  staging: z.object({
-    item: z.string(),
-    position: z.string(),
-    description: z.string().optional(),
-  }).optional(),
-  
-  movement: z.object({
-    characterId: z.string(),
-    from: z.string(),
-    to: z.string(),
-    description: z.string().optional(),
-  }).optional(),
+  lighting: z
+    .object({
+      position: z.string(),
+      color: z.string(),
+    })
+    .optional(),
+
+  sound: z
+    .object({
+      url: z.string(),
+      timecode: z.string(),
+      description: z.string().optional(),
+    })
+    .optional(),
+
+  image: z
+    .object({
+      url: z.string(),
+      caption: z.string().optional(),
+    })
+    .optional(),
+
+  staging: z
+    .object({
+      item: z.string(),
+      position: z.string(),
+      description: z.string().optional(),
+    })
+    .optional(),
+
+  movement: z
+    .object({
+      characterId: z.string(),
+      from: z.string(),
+      to: z.string(),
+      description: z.string().optional(),
+    })
+    .optional(),
 });
 
 // Créer un nouveau script
 export async function createScript(data: z.infer<typeof scriptSchema>) {
   try {
     const validatedData = scriptSchema.parse(data);
-    
+
     const script = await prisma.script.create({
       data: validatedData,
     });
-    
+
     revalidatePath("/");
     return { success: true, data: script };
   } catch (error) {
@@ -78,7 +88,7 @@ export async function getScripts() {
     const scripts = await prisma.script.findMany({
       orderBy: { updatedAt: "desc" },
     });
-    
+
     return { success: true, data: scripts };
   } catch (error) {
     return { success: false, error: "Une erreur est survenue lors de la récupération des scripts" };
@@ -105,11 +115,11 @@ export async function getScript(id: string) {
         },
       },
     });
-    
+
     if (!script) {
       return { success: false, error: "Script non trouvé" };
     }
-    
+
     return { success: true, data: script };
   } catch (error) {
     return { success: false, error: "Une erreur est survenue lors de la récupération du script" };
@@ -120,12 +130,12 @@ export async function getScript(id: string) {
 export async function updateScript(id: string, data: z.infer<typeof scriptSchema>) {
   try {
     const validatedData = scriptSchema.parse(data);
-    
+
     const script = await prisma.script.update({
       where: { id },
       data: validatedData,
     });
-    
+
     revalidatePath(`/scripts/${id}`);
     return { success: true, data: script };
   } catch (error) {
@@ -142,10 +152,10 @@ export async function deleteScript(id: string) {
     await prisma.script.delete({
       where: { id },
     });
-    
+
     revalidatePath("/");
     return { success: true };
   } catch (error) {
     return { success: false, error: "Une erreur est survenue lors de la suppression du script" };
   }
-} 
+}

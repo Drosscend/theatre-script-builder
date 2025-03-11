@@ -16,14 +16,16 @@ const EditItemDialogProps = {
     id: string;
     type: "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement";
   },
-  characters: [] as Array<typeof Character & {
-    id: string;
-    realName: string;
-    stageName: string;
-    role: string;
-    color: string;
-  }>,
-  onUpdate: (item: typeof ScriptItemType) => {}
+  characters: [] as Array<
+    typeof Character & {
+      id: string;
+      realName: string;
+      stageName: string;
+      role: string;
+      color: string;
+    }
+  >,
+  onUpdate: (item: typeof ScriptItemType) => {},
 };
 
 export default function EditItemDialog({ open, onOpenChange, item, characters, onUpdate }: typeof EditItemDialogProps) {

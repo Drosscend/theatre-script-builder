@@ -13,13 +13,15 @@ const AddItemDialogProps = {
   open: false,
   onOpenChange: (open: boolean) => {},
   onAdd: (item: typeof ScriptItemType) => {},
-  characters: [] as Array<typeof Character & {
-    id: string;
-    realName: string;
-    stageName: string;
-    role: string;
-    color: string;
-  }>
+  characters: [] as Array<
+    typeof Character & {
+      id: string;
+      realName: string;
+      stageName: string;
+      role: string;
+      color: string;
+    }
+  >,
 };
 
 export default function AddItemDialog({ open, onOpenChange, onAdd, characters }: typeof AddItemDialogProps) {
@@ -73,30 +75,45 @@ export default function AddItemDialog({ open, onOpenChange, onAdd, characters }:
       type: itemType,
       character: character || undefined,
       text: text || undefined,
-      lighting: itemType === "lighting" ? {
-        position: lightPosition,
-        color: lightColor
-      } : undefined,
-      sound: itemType === "sound" ? {
-        url: soundUrl,
-        timecode: soundTimecode,
-        description: soundDescription
-      } : undefined,
-      image: itemType === "image" ? {
-        url: imageUrl,
-        caption: imageCaption
-      } : undefined,
-      staging: itemType === "staging" ? {
-        item: stagingItem,
-        position: stagingPosition,
-        description: stagingDescription
-      } : undefined,
-      movement: itemType === "movement" ? {
-        characterId: movementCharacter,
-        from: movementFrom,
-        to: movementTo,
-        description: movementDescription
-      } : undefined
+      lighting:
+        itemType === "lighting"
+          ? {
+              position: lightPosition,
+              color: lightColor,
+            }
+          : undefined,
+      sound:
+        itemType === "sound"
+          ? {
+              url: soundUrl,
+              timecode: soundTimecode,
+              description: soundDescription,
+            }
+          : undefined,
+      image:
+        itemType === "image"
+          ? {
+              url: imageUrl,
+              caption: imageCaption,
+            }
+          : undefined,
+      staging:
+        itemType === "staging"
+          ? {
+              item: stagingItem,
+              position: stagingPosition,
+              description: stagingDescription,
+            }
+          : undefined,
+      movement:
+        itemType === "movement"
+          ? {
+              characterId: movementCharacter,
+              from: movementFrom,
+              to: movementTo,
+              description: movementDescription,
+            }
+          : undefined,
     };
 
     onAdd(newItem);

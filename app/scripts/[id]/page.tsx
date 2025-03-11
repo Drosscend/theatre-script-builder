@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScriptEditor } from "@/components/script-editor";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { prisma } from "@/lib/prisma";
 
 interface PageProps {
   params: Promise<{
@@ -35,7 +35,7 @@ async function getScript(id: string) {
   }
 
   // Transformer les éléments du script pour correspondre au format attendu par ScriptEditor
-  const transformedItems = script.items.map(item => {
+  const transformedItems = script.items.map((item) => {
     const transformedItem: any = {
       id: item.id,
       type: item.type as "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement",
@@ -47,7 +47,7 @@ async function getScript(id: string) {
     if (item.lighting) {
       transformedItem.lighting = {
         position: item.lighting.position,
-        color: item.lighting.color
+        color: item.lighting.color,
       };
     }
 
@@ -55,14 +55,14 @@ async function getScript(id: string) {
       transformedItem.sound = {
         url: item.sound.url,
         timecode: item.sound.timecode,
-        description: item.sound.description || ""
+        description: item.sound.description || "",
       };
     }
 
     if (item.image) {
       transformedItem.image = {
         url: item.image.url,
-        caption: item.image.caption
+        caption: item.image.caption,
       };
     }
 
@@ -70,7 +70,7 @@ async function getScript(id: string) {
       transformedItem.staging = {
         item: item.staging.item,
         position: item.staging.position,
-        description: item.staging.description
+        description: item.staging.description,
       };
     }
 
@@ -79,7 +79,7 @@ async function getScript(id: string) {
         character: item.movement.characterId,
         from: item.movement.from,
         to: item.movement.to,
-        description: item.movement.description
+        description: item.movement.description,
       };
     }
 
@@ -88,7 +88,7 @@ async function getScript(id: string) {
 
   return {
     ...script,
-    items: transformedItems
+    items: transformedItems,
   };
 }
 
@@ -100,17 +100,11 @@ export default async function ScriptPage({ params }: PageProps) {
       <Card>
         <CardHeader>
           <CardTitle>{script.name}</CardTitle>
-          {script.description && (
-            <CardDescription>{script.description}</CardDescription>
-          )}
+          {script.description && <CardDescription>{script.description}</CardDescription>}
         </CardHeader>
       </Card>
 
-      <ScriptEditor
-        initialScript={script.items}
-        initialCharacters={script.characters}
-        scriptId={script.id}
-      />
+      <ScriptEditor initialScript={script.items} initialCharacters={script.characters} scriptId={script.id} />
     </div>
   );
-} 
+}

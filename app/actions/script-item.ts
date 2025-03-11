@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 
 // Schémas de validation
@@ -49,7 +49,7 @@ const scriptItemSchema = z.object({
 export async function createScriptItem(scriptId: string, data: z.infer<typeof scriptItemSchema>, position?: number) {
   try {
     const validatedData = scriptItemSchema.parse(data);
-    
+
     // Déterminer la position si non spécifiée
     let itemPosition = position;
     if (itemPosition === undefined) {
@@ -58,10 +58,10 @@ export async function createScriptItem(scriptId: string, data: z.infer<typeof sc
         orderBy: { position: "desc" },
         select: { position: true },
       });
-      
+
       itemPosition = lastItem ? lastItem.position + 1 : 0;
     }
-    
+
     // Transaction pour créer l'élément et ses relations
     const result = await prisma.$transaction(async (tx) => {
       // Créer l'élément de base
@@ -74,7 +74,7 @@ export async function createScriptItem(scriptId: string, data: z.infer<typeof sc
           scriptId,
         },
       });
-      
+
       // Créer les relations spécifiques au type
       if (validatedData.lighting && validatedData.type === "lighting") {
         await tx.lighting.create({
@@ -84,7 +84,7 @@ export async function createScriptItem(scriptId: string, data: z.infer<typeof sc
           },
         });
       }
-      
+
       if (validatedData.sound && validatedData.type === "sound") {
         await tx.sound.create({
           data: {
@@ -93,7 +93,7 @@ export async function createScriptItem(scriptId: string, data: z.infer<typeof sc
           },
         });
       }
-      
+
       if (validatedData.image && validatedData.type === "image") {
         await tx.image.create({
           data: {
@@ -102,7 +102,7 @@ export async function createScriptItem(scriptId: string, data: z.infer<typeof sc
           },
         });
       }
-      
+
       if (validatedData.staging && validatedData.type === "staging") {
         await tx.staging.create({
           data: {
@@ -111,7 +111,7 @@ export async function createScriptItem(scriptId: string, data: z.infer<typeof sc
           },
         });
       }
-      
+
       if (validatedData.movement && validatedData.type === "movement") {
         await tx.movement.create({
           data: {
@@ -123,10 +123,10 @@ export async function createScriptItem(scriptId: string, data: z.infer<typeof sc
           },
         });
       }
-      
+
       return scriptItem;
     });
-    
+
     revalidatePath(`/scripts/${scriptId}`);
     return { success: true, data: result };
   } catch (error) {
@@ -141,16 +141,16 @@ export async function createScriptItem(scriptId: string, data: z.infer<typeof sc
 export async function updateScriptItem(id: string, data: z.infer<typeof scriptItemSchema>) {
   try {
     const validatedData = scriptItemSchema.parse(data);
-    
+
     const scriptItem = await prisma.scriptItem.findUnique({
       where: { id },
       select: { scriptId: true, type: true },
     });
-    
+
     if (!scriptItem) {
       return { success: false, error: "Élément non trouvé" };
     }
-    
+
     // Transaction pour mettre à jour l'élément et ses relations
     await prisma.$transaction(async (tx) => {
       // Mettre à jour l'élément de base
@@ -162,7 +162,7 @@ export async function updateScriptItem(id: string, data: z.infer<typeof scriptIt
           characterId: validatedData.characterId,
         },
       });
-      
+
       // Si le type a changé, supprimer les anciennes relations
       if (scriptItem.type !== validatedData.type) {
         switch (scriptItem.type) {
@@ -183,7 +183,7 @@ export async function updateScriptItem(id: string, data: z.infer<typeof scriptIt
             break;
         }
       }
-      
+
       // Mettre à jour ou créer les relations spécifiques au type
       if (validatedData.lighting && validatedData.type === "lighting") {
         await tx.lighting.upsert({
@@ -195,7 +195,7 @@ export async function updateScriptItem(id: string, data: z.infer<typeof scriptIt
           },
         });
       }
-      
+
       if (validatedData.sound && validatedData.type === "sound") {
         await tx.sound.upsert({
           where: { scriptItemId: id },
@@ -206,7 +206,7 @@ export async function updateScriptItem(id: string, data: z.infer<typeof scriptIt
           },
         });
       }
-      
+
       if (validatedData.image && validatedData.type === "image") {
         await tx.image.upsert({
           where: { scriptItemId: id },
@@ -217,7 +217,7 @@ export async function updateScriptItem(id: string, data: z.infer<typeof scriptIt
           },
         });
       }
-      
+
       if (validatedData.staging && validatedData.type === "staging") {
         await tx.staging.upsert({
           where: { scriptItemId: id },
@@ -228,7 +228,7 @@ export async function updateScriptItem(id: string, data: z.infer<typeof scriptIt
           },
         });
       }
-      
+
       if (validatedData.movement && validatedData.type === "movement") {
         await tx.movement.upsert({
           where: { scriptItemId: id },
@@ -248,7 +248,7 @@ export async function updateScriptItem(id: string, data: z.infer<typeof scriptIt
         });
       }
     });
-    
+
     revalidatePath(`/scripts/${scriptItem.scriptId}`);
     return { success: true };
   } catch (error) {
@@ -266,15 +266,15 @@ export async function deleteScriptItem(id: string) {
       where: { id },
       select: { scriptId: true },
     });
-    
+
     if (!scriptItem) {
       return { success: false, error: "Élément non trouvé" };
     }
-    
+
     await prisma.scriptItem.delete({
       where: { id },
     });
-    
+
     revalidatePath(`/scripts/${scriptItem.scriptId}`);
     return { success: true };
   } catch (error) {
@@ -290,25 +290,25 @@ export async function reorderScriptItems(scriptId: string, itemIds: string[]) {
       where: { id: { in: itemIds } },
       select: { id: true, scriptId: true },
     });
-    
-    const invalidItems = items.filter(item => item.scriptId !== scriptId);
+
+    const invalidItems = items.filter((item) => item.scriptId !== scriptId);
     if (invalidItems.length > 0) {
       return { success: false, error: "Certains éléments n'appartiennent pas à ce script" };
     }
-    
+
     // Mettre à jour les positions
     await prisma.$transaction(
-      itemIds.map((id, index) => 
+      itemIds.map((id, index) =>
         prisma.scriptItem.update({
           where: { id },
           data: { position: index },
         })
       )
     );
-    
+
     revalidatePath(`/scripts/${scriptId}`);
     return { success: true };
   } catch (error) {
     return { success: false, error: "Une erreur est survenue lors de la réorganisation des éléments" };
   }
-} 
+}

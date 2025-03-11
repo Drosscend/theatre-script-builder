@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 
 // Schéma de validation
@@ -16,14 +16,14 @@ const characterSchema = z.object({
 export async function createCharacter(scriptId: string, data: z.infer<typeof characterSchema>) {
   try {
     const validatedData = characterSchema.parse(data);
-    
+
     const character = await prisma.character.create({
       data: {
         ...validatedData,
         scriptId,
       },
     });
-    
+
     revalidatePath(`/scripts/${scriptId}`);
     return { success: true, data: character };
   } catch (error) {
@@ -41,7 +41,7 @@ export async function getCharacters(scriptId: string) {
       where: { scriptId },
       orderBy: { stageName: "asc" },
     });
-    
+
     return { success: true, data: characters };
   } catch (error) {
     return { success: false, error: "Une erreur est survenue lors de la récupération des personnages" };
@@ -52,21 +52,21 @@ export async function getCharacters(scriptId: string) {
 export async function updateCharacter(id: string, data: z.infer<typeof characterSchema>) {
   try {
     const validatedData = characterSchema.parse(data);
-    
+
     const character = await prisma.character.findUnique({
       where: { id },
       select: { scriptId: true },
     });
-    
+
     if (!character) {
       return { success: false, error: "Personnage non trouvé" };
     }
-    
+
     const updatedCharacter = await prisma.character.update({
       where: { id },
       data: validatedData,
     });
-    
+
     revalidatePath(`/scripts/${character.scriptId}`);
     return { success: true, data: updatedCharacter };
   } catch (error) {
@@ -84,18 +84,18 @@ export async function deleteCharacter(id: string) {
       where: { id },
       select: { scriptId: true },
     });
-    
+
     if (!character) {
       return { success: false, error: "Personnage non trouvé" };
     }
-    
+
     await prisma.character.delete({
       where: { id },
     });
-    
+
     revalidatePath(`/scripts/${character.scriptId}`);
     return { success: true };
   } catch (error) {
     return { success: false, error: "Une erreur est survenue lors de la suppression du personnage" };
   }
-} 
+}

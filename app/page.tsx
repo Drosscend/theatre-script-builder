@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { getScripts } from "@/app/actions/script";
+import { PlusCircle } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle } from "lucide-react";
 
 export default async function HomePage() {
   const result = await getScripts();
@@ -25,9 +25,7 @@ export default async function HomePage() {
           <Card className="col-span-full">
             <CardHeader>
               <CardTitle>Aucun script</CardTitle>
-              <CardDescription>
-                {`Vous n'avez pas encore créé de script. Commencez par en créer un nouveau.`}
-              </CardDescription>
+              <CardDescription>{`Vous n'avez pas encore créé de script. Commencez par en créer un nouveau.`}</CardDescription>
             </CardHeader>
             <CardFooter>
               <Link href="/scripts/new">
@@ -44,14 +42,10 @@ export default async function HomePage() {
               <Card className="h-full transition-all hover:shadow-md">
                 <CardHeader>
                   <CardTitle>{script.name}</CardTitle>
-                  <CardDescription>
-                    {script.description || "Aucune description"}
-                  </CardDescription>
+                  <CardDescription>{script.description || "Aucune description"}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Dernière modification: {new Date(script.updatedAt).toLocaleDateString()}
-                  </p>
+                  <p className="text-sm text-muted-foreground">Dernière modification: {new Date(script.updatedAt).toLocaleDateString()}</p>
                 </CardContent>
                 <CardFooter>
                   <Button variant="outline" className="w-full">

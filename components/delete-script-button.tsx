@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
 import { deleteScript } from "@/app/actions/script";
-import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 interface DeleteScriptButtonProps {
   scriptId: string;
@@ -32,7 +32,7 @@ export function DeleteScriptButton({ scriptId, scriptName }: DeleteScriptButtonP
     setIsDeleting(true);
     try {
       const result = await deleteScript(scriptId);
-      
+
       if (result.success) {
         toast("Script supprimé", {
           description: "Le script a été supprimé avec succès",
@@ -85,4 +85,4 @@ export function DeleteScriptButton({ scriptId, scriptName }: DeleteScriptButtonP
       </AlertDialogContent>
     </AlertDialog>
   );
-} 
+}

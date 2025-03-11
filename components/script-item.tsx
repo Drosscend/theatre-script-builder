@@ -16,13 +16,15 @@ interface ScriptItemProps {
     id: string;
     type: "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement";
   };
-  characters: Array<typeof Character & {
-    id: string;
-    realName: string;
-    stageName: string;
-    role: string;
-    color: string;
-  }>;
+  characters: Array<
+    typeof Character & {
+      id: string;
+      realName: string;
+      stageName: string;
+      role: string;
+      color: string;
+    }
+  >;
   characterColor?: string;
   onUpdate: (item: typeof ScriptItemType) => void;
   onDelete: (id: string) => void;
