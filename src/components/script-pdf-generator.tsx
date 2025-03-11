@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, memo } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { FileTextIcon } from "lucide-react";
@@ -68,10 +68,10 @@ interface ScriptPDFGeneratorProps {
   }>;
 }
 
-export function ScriptPDFGenerator({ script, characters }: ScriptPDFGeneratorProps) {
+export const ScriptPDFGenerator = memo(function ScriptPDFGenerator({ script, characters }: ScriptPDFGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const generatePDF = async () => {
+  const generatePDF = useCallback(async () => {
     setIsGenerating(true);
     
     try {
@@ -185,7 +185,7 @@ export function ScriptPDFGenerator({ script, characters }: ScriptPDFGeneratorPro
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, [script, characters]);
 
   return (
     <Button 
@@ -197,4 +197,4 @@ export function ScriptPDFGenerator({ script, characters }: ScriptPDFGeneratorPro
       {isGenerating ? "Génération..." : "Générer PDF"}
     </Button>
   );
-}
+});

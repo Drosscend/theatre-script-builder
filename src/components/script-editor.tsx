@@ -16,6 +16,7 @@ import { ScriptPDFGenerator } from "@/components/script-pdf-generator";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useRouter } from "next/navigation";
 
 export const Character = {
   id: "",
@@ -111,7 +112,7 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
   const [isCharactersDialogOpen, setIsCharactersDialogOpen] = useState(false);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
-
+  const router = useRouter();
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
 
   /**
@@ -539,6 +540,7 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
                     : undefined,
               };
 
+              toast.loading(`Création de l'élement ${i + 1} sur ${parsed.script.length}`, { id: idToast });
               const result = await createScriptItem(scriptId, apiItem, i);
 
               if (result.success && result.data) {
@@ -607,6 +609,7 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
             description: "Le script a été importé avec succès",
             id: idToast,
           });
+          router.refresh();
         } catch (error) {
           toast.error("Erreur", {
             description: "Le fichier importé n'est pas valide.",

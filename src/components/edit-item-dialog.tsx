@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -39,7 +39,7 @@ const EditItemDialogProps = {
   onUpdate: (item: typeof ScriptItemType) => {},
 };
 
-export default function EditItemDialog({ 
+const EditItemDialog = memo(function EditItemDialog({ 
   open, 
   onOpenChange, 
   item, 
@@ -104,19 +104,19 @@ export default function EditItemDialog({
   /**
    * Handle selection of existing lighting
    */
-  const handleSelectLighting = (id: string) => {
+  const handleSelectLighting = useCallback((id: string) => {
     const lighting = existingLightings.find(l => l.id === id);
     if (lighting) {
       setLightPosition(lighting.position);
       setLightColor(lighting.color);
     }
     setSelectedLighting(id);
-  };
+  }, [existingLightings]);
 
   /**
    * Handle selection of existing sound
    */
-  const handleSelectSound = (id: string) => {
+  const handleSelectSound = useCallback((id: string) => {
     const sound = existingSounds.find(s => s.id === id);
     if (sound) {
       setSoundUrl(sound.url);
@@ -124,12 +124,12 @@ export default function EditItemDialog({
       setSoundDescription(sound.description || "");
     }
     setSelectedSound(id);
-  };
+  }, [existingSounds]);
 
   /**
    * Handle form submission and update existing script item
    */
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     const updatedItem: typeof ScriptItemType = {
       ...item,
       type: itemType,
@@ -194,12 +194,12 @@ export default function EditItemDialog({
 
     onUpdate(updatedItem);
     onOpenChange(false);
-  };
+  }, [itemType, character, text, lightPosition, lightColor, lightIsOff, soundUrl, soundTimecode, soundDescription, soundIsStop, imageUrl, imageCaption, stagingItem, stagingPosition, stagingDescription, movementCharacter, movementFrom, movementTo, movementDescription, onUpdate, onOpenChange]);
 
   /**
    * Check if the form is valid based on current item type
    */
-  const isFormValid = () => {
+  const isFormValid = useCallback(() => {
     switch (itemType) {
       case "dialogue":
         return character && text;
@@ -218,7 +218,7 @@ export default function EditItemDialog({
       default:
         return false;
     }
-  };
+  }, [itemType, character, text, lightPosition, lightColor, soundUrl, soundTimecode, imageUrl, stagingItem, stagingPosition, movementCharacter, movementFrom, movementTo]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -536,4 +536,6 @@ export default function EditItemDialog({
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+export default EditItemDialog;

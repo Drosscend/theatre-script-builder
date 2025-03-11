@@ -3,7 +3,7 @@
 import { createCharacter, deleteCharacter, updateCharacter } from "@/app/actions/character";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ interface CharactersDialogProps {
   scriptId: string;
 }
 
-export default function CharactersDialog({ open, onOpenChange, characters, setCharacters, scriptId }: CharactersDialogProps) {
+const CharactersDialog = memo(function CharactersDialog({ open, onOpenChange, characters, setCharacters, scriptId }: CharactersDialogProps) {
   const [newRealName, setNewRealName] = useState("");
   const [newStageName, setNewStageName] = useState("");
   const [newRole, setNewRole] = useState("");
@@ -29,7 +29,7 @@ export default function CharactersDialog({ open, onOpenChange, characters, setCh
   /**
    * Add a new character to the list
    */
-  const handleAddCharacter = async () => {
+  const handleAddCharacter = useCallback(async () => {
     if (newRealName && newStageName) {
       setIsLoading(true);
       try {
@@ -64,12 +64,12 @@ export default function CharactersDialog({ open, onOpenChange, characters, setCh
         setIsLoading(false);
       }
     }
-  };
+  }, [newRealName, newStageName, newRole, newColor, scriptId, setCharacters, onOpenChange]);
 
   /**
    * Delete a character from the list
    */
-  const handleDeleteCharacter = async (id: string) => {
+  const handleDeleteCharacter = useCallback(async (id: string) => {
     setIsLoading(true);
     try {
       const result = await deleteCharacter(id);
@@ -91,12 +91,12 @@ export default function CharactersDialog({ open, onOpenChange, characters, setCh
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [setCharacters]);
 
   /**
    * Update an existing character property
    */
-  const handleUpdateCharacter = async (id: string, field: keyof typeof Character, value: string) => {
+  const handleUpdateCharacter = useCallback(async (id: string, field: keyof typeof Character, value: string) => {
     // Mettre à jour localement pour une meilleure réactivité
     const updatedCharacters = characters.map((char) => (char.id === id ? { ...char, [field]: value } : char));
     setCharacters(updatedCharacters);
@@ -118,7 +118,7 @@ export default function CharactersDialog({ open, onOpenChange, characters, setCh
         description: "Une erreur est survenue lors de la mise à jour du personnage",
       });
     }
-  };
+  }, [setCharacters]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -206,4 +206,6 @@ export default function CharactersDialog({ open, onOpenChange, characters, setCh
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+export default CharactersDialog;

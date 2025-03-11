@@ -3,7 +3,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { DiffIcon, EditIcon, GripVerticalIcon, Trash2Icon } from "lucide-react";
-import { useState } from "react";
+import { useState, memo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -45,7 +45,7 @@ interface ScriptItemProps {
   }>;
 }
 
-export default function ScriptItem({
+function ScriptItem({
   item,
   characters,
   characterColor,
@@ -72,7 +72,7 @@ export default function ScriptItem({
   /**
    * Get the display label for the script item based on its type
    */
-  const getItemLabel = () => {
+  const getItemLabel = useCallback(() => {
     switch (item.type) {
       case "dialogue":
         const character = item.character ? characters.find((c) => c.id === item.character) : undefined;
@@ -95,12 +95,12 @@ export default function ScriptItem({
       default:
         return "Élément inconnu";
     }
-  };
+  }, [item.type, item.character, item.movement?.characterId, characters]);
 
   /**
    * Get a preview text for the script item to display in the list
    */
-  const getItemPreview = () => {
+  const getItemPreview = useCallback(() => {
     switch (item.type) {
       case "dialogue":
         return item.text || "";
@@ -119,19 +119,19 @@ export default function ScriptItem({
         return item.image.caption || item.image.url || "";
       case "staging":
         if (!item.staging) return "Informations de mise en scène non disponibles";
-        return `${item.staging.item || ""} - Position: ${item.staging.position || ""}`;
+        return `${item.staging.item || ""} - Position: ${item.staging.position || ""} - ${item.staging.description || ""}`;
       case "movement":
         if (!item.movement) return "Informations de mouvement non disponibles";
         return `${item.movement.from || ""} → ${item.movement.to || ""}`;
       default:
         return "";
     }
-  };
+  }, [item]);
 
   /**
    * Get the color for the item's border based on its type and associated character
    */
-  const getBorderColor = () => {
+  const getBorderColor = useCallback(() => {
     if (item.type === "dialogue" && characterColor) {
       return characterColor;
     }
@@ -152,12 +152,23 @@ export default function ScriptItem({
       default:
         return "#e2e8f0"; // slate-200
     }
-  };
+  }, [item.type, characterColor]);
 
-  const props = {
-    isSelected,
-    onSelect,
-  };
+  const handleDelete = useCallback(() => {
+    onDelete(item.id);
+  }, [item.id, onDelete]);
+
+  const handleOpenEditDialog = useCallback(() => {
+    setIsEditOpen(true);
+  }, []);
+
+  const handleOpenAddBeforeDialog = useCallback(() => {
+    setIsAddBeforeOpen(true);
+  }, []);
+
+  const handleOpenAddAfterDialog = useCallback(() => {
+    setIsAddAfterOpen(true);
+  }, []);
 
   return (
     <>
@@ -170,8 +181,8 @@ export default function ScriptItem({
         className="shadow-sm hover:shadow transition-shadow"
       >
         <CardContent className="px-4 flex items-start gap-2">
-          <div className="flex items-center gap-0.5  mt-1">
-            <Checkbox checked={props.isSelected} onCheckedChange={props.onSelect} />
+          <div className="flex items-center gap-0.5 mt-1">
+            <Checkbox checked={isSelected} onCheckedChange={onSelect} />
             <div className="cursor-move touch-none p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800" {...attributes} {...listeners}>
               <GripVerticalIcon className="size-5 text-muted-foreground" />
             </div>
@@ -183,16 +194,16 @@ export default function ScriptItem({
           </div>
 
           <div className="flex shrink-0">
-            <Button variant="ghost" size="icon" title="Ajouter avant" onClick={() => setIsAddBeforeOpen(true)}>
+            <Button variant="ghost" size="icon" title="Ajouter avant" onClick={handleOpenAddBeforeDialog}>
               <DiffIcon />
             </Button>
-            <Button variant="ghost" size="icon" title="Ajouter après" onClick={() => setIsAddAfterOpen(true)}>
+            <Button variant="ghost" size="icon" title="Ajouter après" onClick={handleOpenAddAfterDialog}>
               <DiffIcon className="rotate-180" />
             </Button>
-            <Button variant="ghost" size="icon" title="Modifier" onClick={() => setIsEditOpen(true)}>
+            <Button variant="ghost" size="icon" title="Modifier" onClick={handleOpenEditDialog}>
               <EditIcon />
             </Button>
-            <Button variant="ghost" size="icon" title="Supprimer" onClick={() => onDelete(item.id)}>
+            <Button variant="ghost" size="icon" title="Supprimer" onClick={handleDelete}>
               <Trash2Icon />
             </Button>
           </div>
@@ -229,3 +240,15 @@ export default function ScriptItem({
     </>
   );
 }
+
+export default memo(ScriptItem, (prevProps, nextProps) => {
+  return (
+    prevProps.item.id === nextProps.item.id &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.characterColor === nextProps.characterColor &&
+    prevProps.item.text === nextProps.item.text &&
+    prevProps.item.type === nextProps.item.type &&
+    JSON.stringify(prevProps.item) === JSON.stringify(nextProps.item) &&
+    prevProps.characters.length === nextProps.characters.length
+  );
+});

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,7 @@ const AddItemDialogProps = {
   }>,
 };
 
-export default function AddItemDialog({ 
+const AddItemDialog = memo(function AddItemDialog({ 
   open, 
   onOpenChange, 
   onAdd, 
@@ -70,7 +70,7 @@ export default function AddItemDialog({
   /**
    * Reset all form fields to their default values
    */
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setItemType("dialogue");
     setCharacter("");
     setText("");
@@ -94,24 +94,24 @@ export default function AddItemDialog({
     setMovementFrom("");
     setMovementTo("");
     setMovementDescription("");
-  };
+  }, []);
 
   /**
    * Handle selection of existing lighting
    */
-  const handleSelectLighting = (id: string) => {
+  const handleSelectLighting = useCallback((id: string) => {
     const lighting = existingLightings.find(l => l.id === id);
     if (lighting) {
       setLightPosition(lighting.position);
       setLightColor(lighting.color);
     }
     setSelectedLighting(id);
-  };
+  }, [existingLightings]);
 
   /**
    * Handle selection of existing sound
    */
-  const handleSelectSound = (id: string) => {
+  const handleSelectSound = useCallback((id: string) => {
     const sound = existingSounds.find(s => s.id === id);
     if (sound) {
       setSoundUrl(sound.url);
@@ -119,12 +119,12 @@ export default function AddItemDialog({
       setSoundDescription(sound.description || "");
     }
     setSelectedSound(id);
-  };
+  }, [existingSounds]);
 
   /**
    * Handle form submission and create new script item
    */
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     const newItem: typeof ScriptItemType = {
       id: Date.now().toString(),
       type: itemType,
@@ -176,12 +176,12 @@ export default function AddItemDialog({
     onAdd(newItem);
     resetForm();
     onOpenChange(false);
-  };
+  }, [itemType, character, text, lightPosition, lightColor, lightIsOff, selectedLighting, useExistingLighting, soundUrl, soundTimecode, soundDescription, soundIsStop, selectedSound, useExistingSound, imageUrl, imageCaption, stagingItem, stagingPosition, stagingDescription, movementCharacter, movementFrom, movementTo, movementDescription, onAdd, resetForm, onOpenChange]);
 
   /**
    * Check if the form is valid based on current item type
    */
-  const isFormValid = () => {
+  const isFormValid = useCallback(() => {
     switch (itemType) {
       case "dialogue":
         return character && text;
@@ -200,7 +200,7 @@ export default function AddItemDialog({
       default:
         return false;
     }
-  };
+  }, [itemType, character, text, lightPosition, lightColor, soundUrl, soundTimecode, imageUrl, stagingItem, stagingPosition]);
 
   return (
     <Dialog
@@ -542,4 +542,6 @@ export default function AddItemDialog({
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+export default AddItemDialog;
