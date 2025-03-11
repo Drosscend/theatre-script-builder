@@ -5,10 +5,10 @@ import { createScriptItem, deleteScriptItem, reorderScriptItems, updateScriptIte
 import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { DownloadIcon, PlusIcon, Trash2Icon, UploadIcon, UsersIcon } from "lucide-react";
+import { DownloadIcon, PlusIcon, Trash2Icon, UploadIcon, UsersIcon, Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 import React from "react";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import AddItemDialog from "@/components/add-item-dialog";
 import CharactersDialog from "@/components/characters-dialog";
 import ScriptItem from "@/components/script-item";
@@ -110,6 +110,7 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
   const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
   const [isCharactersDialogOpen, setIsCharactersDialogOpen] = useState(false);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [isPending, startTransition] = useTransition();
 
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
 
@@ -469,141 +470,154 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const content = e.target?.result as string;
-        const parsed = JSON.parse(content);
+    const idToast = toast.loading("Importation en cours...");
+    
+    startTransition(async () => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const content = e.target?.result as string;
+          const parsed = JSON.parse(content);
 
-        if (parsed.characters && Array.isArray(parsed.characters)) {
-          const deletePromises = characters.map((char) => deleteCharacter(char.id));
-          await Promise.all(deletePromises);
+          if (parsed.characters && Array.isArray(parsed.characters)) {
+            toast.loading("Suppression des personnages existants...", { id: idToast });
+            const deletePromises = characters.map((char) => deleteCharacter(char.id));
+            await Promise.all(deletePromises);
+            toast.success("Suppression des personnages existants...", { id: idToast });
 
-          const createPromises = parsed.characters.map((char: any) => {
-            const { id, ...charData } = char;
-            return createCharacter(scriptId, charData);
-          });
-          const results = await Promise.all(createPromises);
-
-          const newCharacters = results
-            .filter((result) => result.success && result.data)
-            .map((result) => {
-              const data = result.data as { id: string; realName: string; stageName: string; role: string; color: string };
-              return {
-                id: data.id,
-                realName: data.realName,
-                stageName: data.stageName,
-                role: data.role,
-                color: data.color,
-              } as typeof Character;
+            const createPromises = parsed.characters.map((char: any) => {
+              const { id, ...charData } = char;
+              return createCharacter(scriptId, charData);
             });
+            toast.loading("Création des personnages...", { id: idToast });
+            const results = await Promise.all(createPromises);
+            toast.success("Création des personnages...", { id: idToast });
 
-          setCharacters(newCharacters);
-        }
+            const newCharacters = results
+              .filter((result) => result.success && result.data)
+              .map((result) => {
+                const data = result.data as { id: string; realName: string; stageName: string; role: string; color: string };
+                return {
+                  id: data.id,
+                  realName: data.realName,
+                  stageName: data.stageName,
+                  role: data.role,
+                  color: data.color,
+                } as typeof Character;
+              });
 
-        if (parsed.script && Array.isArray(parsed.script)) {
-          const deletePromises = script.map((item) => deleteScriptItem(item.id));
-          await Promise.all(deletePromises);
-
-          const newItems: (typeof ScriptItemType)[] = [];
-          for (let i = 0; i < parsed.script.length; i++) {
-            const item = parsed.script[i];
-
-            const apiItem = {
-              type: item.type,
-              text: item.text,
-              characterId: item.character,
-              lighting: item.lighting,
-              sound: item.sound,
-              image: item.image,
-              staging: item.staging,
-              movement:
-                item.type === "movement"
-                  ? {
-                      characterId: item.movement?.characterId || "",
-                      from: item.movement?.from || "",
-                      to: item.movement?.to || "",
-                      description: item.movement?.description,
-                    }
-                  : undefined,
-            };
-
-            const result = await createScriptItem(scriptId, apiItem, i);
-
-            if (result.success && result.data) {
-              const data = result.data as {
-                id: string;
-                type: string;
-                characterId?: string;
-                text?: string;
-                lighting?: { position: string; color: string; isOff?: boolean };
-                sound?: { url: string; timecode: string; description?: string; isStop?: boolean };
-                image?: { url: string; caption?: string };
-                staging?: { item: string; position: string; description?: string };
-                movement?: { characterId: string; from: string; to: string; description?: string };
-              };
-              const newItem: typeof ScriptItemType = {
-                id: data.id,
-                type: data.type as "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement",
-                character: data.characterId || undefined,
-                text: data.text || undefined,
-                lighting: data.lighting
-                  ? {
-                      position: data.lighting.position,
-                      color: data.lighting.color,
-                      isOff: data.lighting.isOff || false,
-                    }
-                  : undefined,
-                sound: data.sound
-                  ? {
-                      url: data.sound.url,
-                      timecode: data.sound.timecode,
-                      description: data.sound.description || "",
-                      isStop: data.sound.isStop || false,
-                    }
-                  : undefined,
-                image: data.image
-                  ? {
-                      url: data.image.url,
-                      caption: data.image.caption,
-                    }
-                  : undefined,
-                staging: data.staging
-                  ? {
-                      item: data.staging.item,
-                      position: data.staging.position,
-                      description: data.staging.description,
-                    }
-                  : undefined,
-                movement: data.movement
-                  ? {
-                      characterId: data.movement.characterId,
-                      from: data.movement.from,
-                      to: data.movement.to,
-                      description: data.movement.description,
-                    }
-                  : undefined,
-              };
-
-              newItems.push(newItem);
-            }
+            setCharacters(newCharacters);
           }
 
-          setScript(newItems);
-        }
+          if (parsed.script && Array.isArray(parsed.script)) {
+            const deletePromises = script.map((item) => deleteScriptItem(item.id));
+            toast.loading("Suppression des éléments existants...", { id: idToast });
+            await Promise.all(deletePromises);
+            toast.success("Suppression des éléments existants...", { id: idToast });
 
-        toast("Import réussi", {
-          description: "Le script a été importé avec succès",
-        });
-      } catch (error) {
-        toast.error("Erreur", {
-          description: "Le fichier importé n'est pas valide.",
-        });
-      } finally {
-        setIsAddItemDialogOpen(false);
-      }
-    };
-    reader.readAsText(file);
+            toast.loading("Création des éléments...", { id: idToast });
+            const newItems: (typeof ScriptItemType)[] = [];
+            for (let i = 0; i < parsed.script.length; i++) {
+              const item = parsed.script[i];
+
+              const apiItem = {
+                type: item.type,
+                text: item.text,
+                characterId: item.character,
+                lighting: item.lighting,
+                sound: item.sound,
+                image: item.image,
+                staging: item.staging,
+                movement:
+                  item.type === "movement"
+                    ? {
+                        characterId: item.movement?.characterId || "",
+                        from: item.movement?.from || "",
+                        to: item.movement?.to || "",
+                        description: item.movement?.description,
+                      }
+                    : undefined,
+              };
+
+              const result = await createScriptItem(scriptId, apiItem, i);
+
+              if (result.success && result.data) {
+                const data = result.data as {
+                  id: string;
+                  type: string;
+                  characterId?: string;
+                  text?: string;
+                  lighting?: { position: string; color: string; isOff?: boolean };
+                  sound?: { url: string; timecode: string; description?: string; isStop?: boolean };
+                  image?: { url: string; caption?: string };
+                  staging?: { item: string; position: string; description?: string };
+                  movement?: { characterId: string; from: string; to: string; description?: string };
+                };
+                const newItem: typeof ScriptItemType = {
+                  id: data.id,
+                  type: data.type as "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement",
+                  character: data.characterId || undefined,
+                  text: data.text || undefined,
+                  lighting: data.lighting
+                    ? {
+                        position: data.lighting.position,
+                        color: data.lighting.color,
+                        isOff: data.lighting.isOff || false,
+                      }
+                    : undefined,
+                  sound: data.sound
+                    ? {
+                        url: data.sound.url,
+                        timecode: data.sound.timecode,
+                        description: data.sound.description || "",
+                        isStop: data.sound.isStop || false,
+                      }
+                    : undefined,
+                  image: data.image
+                    ? {
+                        url: data.image.url,
+                        caption: data.image.caption,
+                      }
+                    : undefined,
+                  staging: data.staging
+                    ? {
+                        item: data.staging.item,
+                        position: data.staging.position,
+                        description: data.staging.description,
+                      }
+                    : undefined,
+                  movement: data.movement
+                    ? {
+                        characterId: data.movement.characterId,
+                        from: data.movement.from,
+                        to: data.movement.to,
+                        description: data.movement.description,
+                      }
+                    : undefined,
+                };
+
+                newItems.push(newItem);
+              }
+            }
+
+            setScript(newItems);
+          }
+
+          toast.success("Import réussi", {
+            description: "Le script a été importé avec succès",
+            id: idToast,
+          });
+        } catch (error) {
+          toast.error("Erreur", {
+            description: "Le fichier importé n'est pas valide.",
+            id: idToast,
+          });
+        } finally {
+          setIsAddItemDialogOpen(false);
+        }
+      };
+      reader.readAsText(file);
+    });
 
     event.target.value = "";
   };
@@ -627,10 +641,25 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
             Exporter
           </Button>
           <div className="relative">
-            <Button variant="outline">
-              <UploadIcon />
-              Importer
-              <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept=".json" onChange={importScript} />
+            <Button variant="outline" disabled={isPending}>
+              {isPending ? (
+                <>
+                  <Loader2Icon className="animate-spin" />
+                  Importation...
+                </>
+              ) : (
+                <>
+                  <UploadIcon />
+                  Importer
+                </>
+              )}
+              <input 
+                type="file" 
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                accept=".json" 
+                onChange={importScript} 
+                disabled={isPending}
+              />
             </Button>
           </div>
           <ScriptPDFGenerator script={script} characters={characters} />

@@ -48,6 +48,7 @@ async function getScript(id: string) {
       transformedItem.lighting = {
         position: item.lighting.position,
         color: item.lighting.color,
+        isOff: item.lighting.isOff,
       };
     }
 
@@ -56,6 +57,7 @@ async function getScript(id: string) {
         url: item.sound.url,
         timecode: item.sound.timecode,
         description: item.sound.description || "",
+        isStop: item.sound.isStop,
       };
     }
 
