@@ -37,6 +37,9 @@ export default function AddItemDialog({ open, onOpenChange, onAdd, characters }:
     const [movementTo, setMovementTo] = useState<string>("")
     const [movementDescription, setMovementDescription] = useState<string>("")
 
+    /**
+     * Reset all form fields to their default values
+     */
     const resetForm = () => {
         setItemType("dialogue")
         setCharacter("")
@@ -57,6 +60,9 @@ export default function AddItemDialog({ open, onOpenChange, onAdd, characters }:
         setMovementDescription("")
     }
 
+    /**
+     * Handle form submission and create new script item
+     */
     const handleSubmit = () => {
         const newItem: ScriptItemType = {
             id: Date.now().toString(),
@@ -69,7 +75,7 @@ export default function AddItemDialog({ open, onOpenChange, onAdd, characters }:
                 newItem.text = text
                 break
             case "narration":
-                newItem.character = character // Permettre à la narration d'avoir un personnage
+                newItem.character = character // Allow narration to have a character
                 newItem.text = text
                 break
             case "lighting":
@@ -112,12 +118,15 @@ export default function AddItemDialog({ open, onOpenChange, onAdd, characters }:
         resetForm()
     }
 
+    /**
+     * Check if the form is valid based on current item type
+     */
     const isFormValid = () => {
         switch (itemType) {
             case "dialogue":
                 return character && text
             case "narration":
-                return text // Le personnage est optionnel pour la narration
+                return text // Character is optional for narration
             case "lighting":
                 return lightPosition && lightColor
             case "sound":
@@ -148,8 +157,8 @@ export default function AddItemDialog({ open, onOpenChange, onAdd, characters }:
 
                 <div className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="item-type">Type d'élément</Label>
-                        <Select value={itemType} onValueChange={(value) => setItemType(value as any)}>
+                        <Label htmlFor="item-type">{`Type d'élément`}</Label>
+                        <Select value={itemType} onValueChange={(value) => setItemType(value as "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement")}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Sélectionner un type d'élément" />
                             </SelectTrigger>
@@ -165,7 +174,7 @@ export default function AddItemDialog({ open, onOpenChange, onAdd, characters }:
                         </Select>
                     </div>
 
-                    {/* Champs spécifiques au type d'élément */}
+                    {/* Fields specific to item type */}
                     {(itemType === "dialogue" || itemType === "narration") && (
                         <>
                             <div className="space-y-2">
@@ -190,7 +199,7 @@ export default function AddItemDialog({ open, onOpenChange, onAdd, characters }:
                                 </Select>
                                 {characters.length === 0 && (
                                     <p className="text-xs text-muted-foreground">
-                                        Ajoutez des personnages en cliquant sur le bouton "Personnages" en haut de la page.
+                                        {`Ajoutez des personnages en cliquant sur le bouton "Personnages" en haut de la page.`}
                                     </p>
                                 )}
                             </div>
@@ -203,16 +212,6 @@ export default function AddItemDialog({ open, onOpenChange, onAdd, characters }:
                                     placeholder={itemType === "dialogue" ? "Entrez le texte du dialogue" : "Entrez le texte de narration"}
                                     rows={4}
                                 />
-                                {itemType === "dialogue" && (
-                                    <p className="text-xs text-muted-foreground">
-                                        Utilisez @nom pour mentionner un personnage dans le texte.
-                                    </p>
-                                )}
-                                {itemType === "narration" && (
-                                    <p className="text-xs text-muted-foreground">
-                                        Utilisez @nom pour mentionner un personnage dans le texte.
-                                    </p>
-                                )}
                             </div>
                         </>
                     )}
@@ -220,7 +219,7 @@ export default function AddItemDialog({ open, onOpenChange, onAdd, characters }:
                     {itemType === "lighting" && (
                         <>
                             <div className="space-y-2">
-                                <Label htmlFor="light-position">Position de l'éclairage</Label>
+                                <Label htmlFor="light-position">{`Position de l'éclairage`}</Label>
                                 <Input
                                     id="light-position"
                                     value={lightPosition}
@@ -284,7 +283,7 @@ export default function AddItemDialog({ open, onOpenChange, onAdd, characters }:
                     {itemType === "image" && (
                         <>
                             <div className="space-y-2">
-                                <Label htmlFor="image-url">URL de l'image</Label>
+                                <Label htmlFor="image-url">{`URL de l'image`}</Label>
                                 <Input
                                     id="image-url"
                                     value={imageUrl}
@@ -404,4 +403,3 @@ export default function AddItemDialog({ open, onOpenChange, onAdd, characters }:
         </Dialog>
     )
 }
-

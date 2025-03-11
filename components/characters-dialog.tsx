@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Trash2, Plus } from "lucide-react"
+import {Trash2Icon, PlusIcon} from "lucide-react"
 import type { Character } from "./script-editor"
 
 interface CharactersDialogProps {
@@ -21,6 +21,9 @@ export default function CharactersDialog({ open, onOpenChange, characters, setCh
     const [newRole, setNewRole] = useState("")
     const [newColor, setNewColor] = useState("#e2e8f0")
 
+    /**
+     * Add a new character to the list
+     */
     const handleAddCharacter = () => {
         if (newRealName && newStageName) {
             const newCharacter: Character = {
@@ -41,10 +44,16 @@ export default function CharactersDialog({ open, onOpenChange, characters, setCh
         }
     }
 
+    /**
+     * Delete a character from the list
+     */
     const handleDeleteCharacter = (id: string) => {
         setCharacters(characters.filter((char) => char.id !== id))
     }
 
+    /**
+     * Update an existing character property
+     */
     const handleUpdateCharacter = (id: string, field: keyof Character, value: string) => {
         setCharacters(characters.map((char) => (char.id === id ? { ...char, [field]: value } : char)))
     }
@@ -61,7 +70,7 @@ export default function CharactersDialog({ open, onOpenChange, characters, setCh
                         <h3 className="text-sm font-medium">Personnages existants</h3>
 
                         {characters.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">Aucun personnage n'a été ajouté.</p>
+                            <p className="text-sm text-muted-foreground">{`Aucun personnage n'a été ajouté.`}</p>
                         ) : (
                             <div className="space-y-3">
                                 {characters.map((char) => (
@@ -88,7 +97,7 @@ export default function CharactersDialog({ open, onOpenChange, characters, setCh
                                             className="h-10 p-1"
                                         />
                                         <Button variant="ghost" size="icon" onClick={() => handleDeleteCharacter(char.id)}>
-                                            <Trash2 className="h-4 w-4" />
+                                            <Trash2Icon />
                                         </Button>
                                     </div>
                                 ))}
@@ -141,7 +150,7 @@ export default function CharactersDialog({ open, onOpenChange, characters, setCh
                             </div>
                         </div>
                         <Button onClick={handleAddCharacter} disabled={!newRealName || !newStageName} className="w-full">
-                            <Plus className="h-4 w-4 mr-2" />
+                            <PlusIcon />
                             Ajouter
                         </Button>
                     </div>
@@ -154,4 +163,3 @@ export default function CharactersDialog({ open, onOpenChange, characters, setCh
         </Dialog>
     )
 }
-

@@ -9,10 +9,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import ScriptItem from "@/components/script-item"
 import AddItemDialog from "@/components/add-item-dialog"
 import CharactersDialog from "@/components/characters-dialog"
-import { Plus, Download, Upload, Users, Trash2 } from "lucide-react"
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
+import { PlusIcon, DownloadIcon, UploadIcon, UsersIcon, Trash2Icon } from "lucide-react"
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent
+} from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable"
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
+import Image from "next/image";
 
 export type Character = {
     id: string
@@ -131,13 +140,13 @@ export default function ScriptEditor() {
         setSelectedItems([])
     }
 
-    const handleDragEnd = (event: any) => {
+    const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event
 
-        if (active.id !== over.id) {
+        if (active.id !== over?.id) {
             setScriptItems((items) => {
                 const oldIndex = items.findIndex((item) => item.id === active.id)
-                const newIndex = items.findIndex((item) => item.id === over.id)
+                const newIndex = items.findIndex((item) => item.id === over?.id)
 
                 return arrayMove(items, oldIndex, newIndex)
             })
@@ -195,16 +204,16 @@ export default function ScriptEditor() {
                 <h1 className="text-3xl font-bold">Éditeur de Pièce de Théâtre</h1>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => setIsCharactersOpen(true)}>
-                        <Users className="mr-2 h-4 w-4" />
+                        <UsersIcon />
                         Personnages
                     </Button>
                     <Button variant="outline" onClick={exportScript}>
-                        <Download className="mr-2 h-4 w-4" />
+                        <DownloadIcon />
                         Exporter
                     </Button>
                     <div className="relative">
                         <Button variant="outline">
-                            <Upload className="mr-2 h-4 w-4" />
+                            <UploadIcon />
                             Importer
                             <input
                                 type="file"
@@ -229,12 +238,12 @@ export default function ScriptEditor() {
                             <div className="flex gap-2">
                                 {selectedItems.length > 0 && (
                                     <Button variant="destructive" onClick={handleDeleteSelected}>
-                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        <Trash2Icon />
                                         Supprimer ({selectedItems.length})
                                     </Button>
                                 )}
                                 <Button onClick={() => setIsAddItemOpen(true)}>
-                                    <Plus className="mr-2 h-4 w-4" />
+                                    <PlusIcon />
                                     Ajouter un élément
                                 </Button>
                             </div>
@@ -250,7 +259,7 @@ export default function ScriptEditor() {
                                 <div className="space-y-3">
                                     {scriptItems.length === 0 ? (
                                         <div className="text-center py-8 text-muted-foreground">
-                                            Aucun élément dans le script. Cliquez sur "Ajouter un élément" pour commencer.
+                                            {`Aucun élément dans le script. Cliquez sur "Ajouter un élément" pour commencer.`}
                                         </div>
                                     ) : (
                                         scriptItems.map((item) => (
@@ -282,104 +291,32 @@ export default function ScriptEditor() {
                                 const character = item.character ? characters.find((c) => c.id === item.character) : null
 
                                 if (item.type === "dialogue" && character) {
-                                    // Traiter les mentions @nom dans le texte du dialogue
-                                    const processedText = item.text || ""
-
-                                    // Rechercher les mentions @nom et les colorer
-                                    const parts = []
-                                    let lastIndex = 0
-
-                                    // Regex pour trouver les mentions @nom
-                                    const mentionRegex = /@(\w+)/g
-                                    let match
-
-                                    while ((match = mentionRegex.exec(processedText)) !== null) {
-                                        const mentionName = match[1]
-                                        const mentionedCharacter = characters.find(
-                                            (c) => c.stageName.toLowerCase() === mentionName.toLowerCase(),
-                                        )
-
-                                        if (mentionedCharacter) {
-                                            // Ajouter le texte avant la mention
-                                            if (match.index > lastIndex) {
-                                                parts.push(processedText.substring(lastIndex, match.index))
-                                            }
-
-                                            // Ajouter la mention colorée
-                                            parts.push(
-                                                <span key={`${item.id}-${match.index}`} style={{ color: mentionedCharacter.color }}>
-                          {mentionedCharacter.stageName}
-                        </span>,
-                                            )
-
-                                            lastIndex = match.index + match[0].length
-                                        }
-                                    }
-
-                                    // Ajouter le reste du texte
-                                    if (lastIndex < processedText.length) {
-                                        parts.push(processedText.substring(lastIndex))
-                                    }
+                                    // Process character mentions in dialogue
+                                    const processedText = item.text
 
                                     return (
                                         <div key={item.id} className="mb-4">
                                             <p className="font-bold" style={{ color: character.color }}>
-                                                {character.stageName}:
+                                                {`${character.stageName}:`}
                                             </p>
-                                            <p className="ml-8">{parts.length > 0 ? parts : processedText}</p>
+                                            <p className="ml-8">{processedText}</p>
                                         </div>
                                     )
                                 } else if (item.type === "narration") {
-                                    // Traiter les mentions @nom dans le texte de narration
-                                    const processedText = item.text || ""
+                                    // Process character mentions in narration
+                                    const processedText = item.text
 
-                                    // Si la narration a un personnage associé, afficher son nom
+                                    // If narration has an associated character, display their name
                                     const narratorPrefix = character ? (
                                         <span className="font-bold" style={{ color: character.color }}>
-                      {character.stageName}:{" "}
-                    </span>
+                                            {`${character.stageName}: `}
+                                        </span>
                                     ) : null
-
-                                    // Rechercher les mentions @nom et les colorer
-                                    const parts = []
-                                    let lastIndex = 0
-
-                                    // Regex pour trouver les mentions @nom
-                                    const mentionRegex = /@(\w+)/g
-                                    let match
-
-                                    while ((match = mentionRegex.exec(processedText)) !== null) {
-                                        const mentionName = match[1]
-                                        const mentionedCharacter = characters.find(
-                                            (c) => c.stageName.toLowerCase() === mentionName.toLowerCase(),
-                                        )
-
-                                        if (mentionedCharacter) {
-                                            // Ajouter le texte avant la mention
-                                            if (match.index > lastIndex) {
-                                                parts.push(processedText.substring(lastIndex, match.index))
-                                            }
-
-                                            // Ajouter la mention colorée
-                                            parts.push(
-                                                <span key={`${item.id}-${match.index}`} style={{ color: mentionedCharacter.color }}>
-                          {mentionedCharacter.stageName}
-                        </span>,
-                                            )
-
-                                            lastIndex = match.index + match[0].length
-                                        }
-                                    }
-
-                                    // Ajouter le reste du texte
-                                    if (lastIndex < processedText.length) {
-                                        parts.push(processedText.substring(lastIndex))
-                                    }
 
                                     return (
                                         <div key={item.id} className="mb-4 italic">
                                             {narratorPrefix}
-                                            <p>{parts.length > 0 ? parts : processedText}</p>
+                                            <p>{processedText}</p>
                                         </div>
                                     )
                                 } else if (item.type === "lighting" && item.lighting) {
@@ -387,12 +324,12 @@ export default function ScriptEditor() {
                                         <div key={item.id} className="mb-4 p-2 bg-slate-100 dark:bg-slate-800 rounded">
                                             <p className="text-sm font-semibold">LUMIÈRE:</p>
                                             <p className="text-sm">
-                                                Position: {item.lighting.position}, Couleur:{" "}
+                                                Position: {`${item.lighting.position}`}, Couleur:{" "}
                                                 <span
                                                     className="inline-block w-3 h-3 rounded-full"
                                                     style={{ backgroundColor: item.lighting.color }}
                                                 ></span>{" "}
-                                                {item.lighting.color}
+                                                {`${item.lighting.color}`}
                                             </p>
                                         </div>
                                     )
@@ -401,9 +338,9 @@ export default function ScriptEditor() {
                                         <div key={item.id} className="mb-4 p-2 bg-slate-100 dark:bg-slate-800 rounded">
                                             <p className="text-sm font-semibold">SON:</p>
                                             <p className="text-sm">
-                                                {item.sound.description} ({item.sound.timecode})
+                                                {`${item.sound.description}`} ({`${item.sound.timecode}`})
                                             </p>
-                                            <p className="text-xs text-blue-500 underline">{item.sound.url}</p>
+                                            <p className="text-xs text-blue-500 underline">{`${item.sound.url}`}</p>
                                         </div>
                                     )
                                 } else if (item.type === "image" && item.image) {
@@ -411,21 +348,21 @@ export default function ScriptEditor() {
                                         <div key={item.id} className="mb-4 p-2 bg-slate-100 dark:bg-slate-800 rounded">
                                             <p className="text-sm font-semibold">IMAGE:</p>
                                             <div className="my-2">
-                                                <img
+                                                <Image
                                                     src={item.image.url || "/placeholder.svg?height=300&width=400"}
                                                     alt={item.image.caption || "Image de scène"}
                                                     className="max-h-64 object-contain mx-auto border rounded"
                                                 />
                                             </div>
-                                            {item.image.caption && <p className="text-sm text-center italic mt-1">{item.image.caption}</p>}
+                                            {item.image.caption && <p className="text-sm text-center italic mt-1">{`{${item.image.caption}}`}</p>}
                                         </div>
                                     )
                                 } else if (item.type === "staging" && item.staging) {
                                     return (
                                         <div key={item.id} className="mb-4 p-2 bg-slate-100 dark:bg-slate-800 rounded">
-                                            <p className="text-sm font-semibold">MISE EN SCÈNE - {item.staging.item}:</p>
-                                            <p className="text-sm">Position: {item.staging.position}</p>
-                                            {item.staging.description && <p className="text-sm italic mt-1">{item.staging.description}</p>}
+                                            <p className="text-sm font-semibold">MISE EN SCÈNE - {`${item.staging.item}`}:</p>
+                                            <p className="text-sm">Position: {`${item.staging.position}`}</p>
+                                            {item.staging.description && <p className="text-sm italic mt-1">{`${item.staging.description}`}</p>}
                                         </div>
                                     )
                                 } else if (item.type === "movement" && item.movement) {
@@ -434,9 +371,9 @@ export default function ScriptEditor() {
                                         <div key={item.id} className="mb-4 p-2 bg-slate-100 dark:bg-slate-800 rounded">
                                             <p className="text-sm font-semibold">MOUVEMENT:</p>
                                             <p className="text-sm">
-                                                {movingCharacter?.stageName || "Personnage"}: {item.movement.from} → {item.movement.to}
+                                                {`${movingCharacter?.stageName || "Personnage"}`}: {`${item.movement.from}`} → {`${item.movement.to}`}
                                             </p>
-                                            {item.movement.description && <p className="text-sm italic mt-1">{item.movement.description}</p>}
+                                            {item.movement.description && <p className="text-sm italic mt-1">{`${item.movement.description}`}</p>}
                                         </div>
                                     )
                                 }
@@ -463,4 +400,3 @@ export default function ScriptEditor() {
         </div>
     )
 }
-

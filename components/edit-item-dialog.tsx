@@ -38,7 +38,9 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
     const [movementTo, setMovementTo] = useState<string>(item.movement?.to || "")
     const [movementDescription, setMovementDescription] = useState<string>(item.movement?.description || "")
 
-    // Update state when item changes
+    /**
+     * Update state when item changes
+     */
     useEffect(() => {
         setItemType(item.type)
         setCharacter(item.character || "")
@@ -59,6 +61,9 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
         setMovementDescription(item.movement?.description || "")
     }, [item])
 
+    /**
+     * Handle form submission and update existing script item
+     */
     const handleSubmit = () => {
         const updatedItem: ScriptItemType = {
             ...item,
@@ -81,7 +86,7 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
                 updatedItem.text = text
                 break
             case "narration":
-                updatedItem.character = character // Permettre à la narration d'avoir un personnage
+                updatedItem.character = character // Allow narration to have a character
                 updatedItem.text = text
                 break
             case "lighting":
@@ -124,12 +129,15 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
         onOpenChange(false)
     }
 
+    /**
+     * Check if the form is valid based on current item type
+     */
     const isFormValid = () => {
         switch (itemType) {
             case "dialogue":
                 return character && text
             case "narration":
-                return text // Le personnage est optionnel pour la narration
+                return text // Character is optional for narration
             case "lighting":
                 return lightPosition && lightColor
             case "sound":
@@ -149,13 +157,13 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                    <DialogTitle>Modifier l'élément</DialogTitle>
+                    <DialogTitle>{`Modifier l'élément`}</DialogTitle>
                 </DialogHeader>
 
                 <div className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="edit-item-type">Type d'élément</Label>
-                        <Select value={itemType} onValueChange={(value) => setItemType(value as any)}>
+                        <Label htmlFor="edit-item-type">{`Type d'élément`}</Label>
+                        <Select value={itemType} onValueChange={(value) => setItemType(value as "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement")}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Sélectionner un type d'élément" />
                             </SelectTrigger>
@@ -171,7 +179,7 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
                         </Select>
                     </div>
 
-                    {/* Champs spécifiques au type d'élément */}
+                    {/* Fields specific to item type */}
                     {(itemType === "dialogue" || itemType === "narration") && (
                         <>
                             <div className="space-y-2">
@@ -225,7 +233,7 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
                     {itemType === "lighting" && (
                         <>
                             <div className="space-y-2">
-                                <Label htmlFor="edit-light-position">Position de l'éclairage</Label>
+                                <Label htmlFor="edit-light-position">{`Position de l'éclairage`}</Label>
                                 <Input
                                     id="edit-light-position"
                                     value={lightPosition}
@@ -289,7 +297,7 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
                     {itemType === "image" && (
                         <>
                             <div className="space-y-2">
-                                <Label htmlFor="edit-image-url">URL de l'image</Label>
+                                <Label htmlFor="edit-image-url">{`URL de l'image`}</Label>
                                 <Input
                                     id="edit-image-url"
                                     value={imageUrl}
@@ -407,4 +415,3 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
         </Dialog>
     )
 }
-

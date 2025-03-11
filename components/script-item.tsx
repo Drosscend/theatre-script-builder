@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Edit, Trash2, GripVertical, Plus } from "lucide-react"
+import {EditIcon, Trash2Icon, GripVerticalIcon, DiffIcon} from "lucide-react"
 import type { ScriptItemType, Character } from "./script-editor"
 import EditItemDialog from "./edit-item-dialog"
 import AddItemDialog from "./add-item-dialog"
@@ -45,6 +45,9 @@ export default function ScriptItem({
         transition,
     }
 
+    /**
+     * Get the display label for the script item based on its type
+     */
     const getItemLabel = () => {
         switch (item.type) {
             case "dialogue":
@@ -69,6 +72,9 @@ export default function ScriptItem({
         }
     }
 
+    /**
+     * Get a preview text for the script item to display in the list
+     */
     const getItemPreview = () => {
         switch (item.type) {
             case "dialogue":
@@ -90,6 +96,9 @@ export default function ScriptItem({
         }
     }
 
+    /**
+     * Get the color for the item's border based on its type and associated character
+     */
     const getBorderColor = () => {
         if (item.type === "dialogue" && characterColor) {
             return characterColor
@@ -136,7 +145,7 @@ export default function ScriptItem({
                             {...attributes}
                             {...listeners}
                         >
-                            <GripVertical className="h-5 w-5 text-muted-foreground" />
+                            <GripVerticalIcon className="size-5 text-muted-foreground" />
                         </div>
                     </div>
 
@@ -147,16 +156,16 @@ export default function ScriptItem({
 
                     <div className="flex gap-1 shrink-0">
                         <Button variant="ghost" size="icon" title="Ajouter avant" onClick={() => setIsAddBeforeOpen(true)}>
-                            <Plus className="h-4 w-4" />
+                            <DiffIcon />
                         </Button>
                         <Button variant="ghost" size="icon" title="Ajouter après" onClick={() => setIsAddAfterOpen(true)}>
-                            <Plus className="h-4 w-4" />
+                            <DiffIcon className="rotate-180" />
                         </Button>
                         <Button variant="ghost" size="icon" title="Modifier" onClick={() => setIsEditOpen(true)}>
-                            <Edit className="h-4 w-4" />
+                            <EditIcon />
                         </Button>
                         <Button variant="ghost" size="icon" title="Supprimer" onClick={() => onDelete(item.id)}>
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2Icon />
                         </Button>
                     </div>
                 </CardContent>
@@ -186,4 +195,3 @@ export default function ScriptItem({
         </>
     )
 }
-
