@@ -130,6 +130,7 @@ export async function createScriptItem(scriptId: string, data: z.infer<typeof sc
     });
 
     revalidatePath(`/scripts/${scriptId}`);
+    revalidatePath(`/scripts/${scriptId}/apercu`);
     return { success: true, data: result };
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -252,6 +253,7 @@ export async function updateScriptItem(id: string, data: z.infer<typeof scriptIt
     });
 
     revalidatePath(`/scripts/${scriptItem.scriptId}`);
+    revalidatePath(`/scripts/${scriptItem.scriptId}/apercu`);
     return { success: true };
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -278,6 +280,7 @@ export async function deleteScriptItem(id: string) {
     });
 
     revalidatePath(`/scripts/${scriptItem.scriptId}`);
+    revalidatePath(`/scripts/${scriptItem.scriptId}/apercu`);
     return { success: true };
   } catch (error) {
     return { success: false, error: "Une erreur est survenue lors de la suppression de l'élément" };
@@ -309,6 +312,7 @@ export async function reorderScriptItems(scriptId: string, itemIds: string[]) {
     );
 
     revalidatePath(`/scripts/${scriptId}`);
+    revalidatePath(`/scripts/${scriptId}/apercu`);
     return { success: true };
   } catch (error) {
     return { success: false, error: "Une erreur est survenue lors de la réorganisation des éléments" };

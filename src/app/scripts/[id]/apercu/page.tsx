@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
-import { ScriptEditor } from "@/components/script-editor";
+import { ScriptPreview } from "@/components/script-preview";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
-import { DeleteScriptButton } from "@/components/delete-script-button";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { ArrowLeftIcon } from "lucide-react";
 
 interface PageProps {
   params: Promise<{
@@ -35,7 +37,7 @@ async function getScript(id: string) {
     notFound();
   }
 
-  // Transformer les éléments du script pour correspondre au format attendu par ScriptEditor
+  // Transformer les éléments du script pour correspondre au format attendu par ScriptPreview
   const transformedItems = script.items.map((item) => {
     const transformedItem: any = {
       id: item.id,
@@ -49,7 +51,7 @@ async function getScript(id: string) {
       transformedItem.lighting = {
         position: item.lighting.position,
         color: item.lighting.color,
-        isOff: item.lighting.isOff,
+        isOff: item.lighting.isOff || false,
       };
     }
 
@@ -58,7 +60,7 @@ async function getScript(id: string) {
         url: item.sound.url,
         timecode: item.sound.timecode,
         description: item.sound.description || "",
-        isStop: item.sound.isStop,
+        isStop: item.sound.isStop || false,
       };
     }
 
@@ -79,7 +81,7 @@ async function getScript(id: string) {
 
     if (item.movement) {
       transformedItem.movement = {
-        character: item.movement.characterId,
+        characterId: item.movement.characterId,
         from: item.movement.from,
         to: item.movement.to,
         description: item.movement.description,
@@ -95,22 +97,29 @@ async function getScript(id: string) {
   };
 }
 
-export default async function ScriptPage({ params }: PageProps) {
+export default async function ScriptPreviewPage({ params }: PageProps) {
   const script = await getScript((await params).id);
 
   return (
     <div className="container mx-auto p-4 space-y-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>{script.name}</CardTitle>
-            {script.description && <CardDescription>{script.description}</CardDescription>}
-          </div>
-          <DeleteScriptButton scriptId={script.id} scriptName={script.name} />
-        </CardHeader>
-      </Card>
+      <div className="flex justify-between items-center">
+        <Card className="w-full">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>{script.name}</CardTitle>
+              {script.description && <CardDescription>{script.description}</CardDescription>}
+            </div>
+            <Link href={`/scripts/${(await params).id}`} passHref>
+              <Button variant="outline">
+                <ArrowLeftIcon className="mr-2 h-4 w-4" />
+                Retour à l'éditeur
+              </Button>
+            </Link>
+          </CardHeader>
+        </Card>
+      </div>
 
-      <ScriptEditor initialScript={script.items} initialCharacters={script.characters} scriptId={script.id} />
+      <ScriptPreview script={script.items} characters={script.characters} />
     </div>
   );
-}
+} 

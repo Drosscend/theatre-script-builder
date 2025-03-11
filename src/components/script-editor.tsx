@@ -5,7 +5,7 @@ import { createScriptItem, deleteScriptItem, reorderScriptItems, updateScriptIte
 import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { DownloadIcon, PlusIcon, Trash2Icon, UploadIcon, UsersIcon, Loader2Icon } from "lucide-react";
+import { DownloadIcon, PlusIcon, Trash2Icon, UploadIcon, UsersIcon, Loader2Icon, EyeIcon } from "lucide-react";
 import { toast } from "sonner";
 import React from "react";
 import { useState, useTransition } from "react";
@@ -15,8 +15,8 @@ import ScriptItem from "@/components/script-item";
 import { ScriptPDFGenerator } from "@/components/script-pdf-generator";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export const Character = {
   id: "",
@@ -479,6 +479,9 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
         try {
           const content = e.target?.result as string;
           const parsed = JSON.parse(content);
+          
+          // Créer un mappage entre les anciens et nouveaux IDs de personnages
+          const characterIdMap = new Map<string, string>();
 
           if (parsed.characters && Array.isArray(parsed.characters)) {
             toast.loading("Suppression des personnages existants...", { id: idToast });
@@ -488,10 +491,22 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
 
             const createPromises = parsed.characters.map((char: any) => {
               const { id, ...charData } = char;
-              return createCharacter(scriptId, charData);
+              return { oldId: id, promise: createCharacter(scriptId, charData) };
             });
+            
             toast.loading("Création des personnages...", { id: idToast });
-            const results = await Promise.all(createPromises);
+            const results = await Promise.all(createPromises.map((item: { promise: Promise<any>; oldId: string }) => item.promise));
+            
+            // Construire le mappage id ancien -> id nouveau
+            results.forEach((result, index) => {
+              if (result.success && result.data) {
+                const oldId = createPromises[index].oldId;
+                const newData = result.data as { id: string; realName: string; stageName: string; role: string; color: string };
+                characterIdMap.set(oldId, newData.id);
+              }
+            });
+            console.log({characterIdMap});
+            
             toast.success("Création des personnages...", { id: idToast });
 
             const newCharacters = results
@@ -520,24 +535,39 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
             const newItems: (typeof ScriptItemType)[] = [];
             for (let i = 0; i < parsed.script.length; i++) {
               const item = parsed.script[i];
+              
+              // Mettre à jour les references de characterId
+              const updatedCharacterId = item.character && characterIdMap.has(item.character) 
+                ? characterIdMap.get(item.character) 
+                : item.character;
+
+              console.log({updatedCharacterId});
+              
+              // Mettre à jour les references de characterId dans les mouvements
+              let updatedMovement = item.movement;
+              if (item.type === "movement" && item.movement?.characterId && characterIdMap.has(item.movement.characterId)) {
+                updatedMovement = {
+                  ...item.movement,
+                  characterId: characterIdMap.get(item.movement.characterId) || item.movement.characterId
+                };
+              }
 
               const apiItem = {
                 type: item.type,
                 text: item.text,
-                characterId: item.character,
+                characterId: updatedCharacterId,
                 lighting: item.lighting,
                 sound: item.sound,
                 image: item.image,
                 staging: item.staging,
-                movement:
-                  item.type === "movement"
-                    ? {
-                        characterId: item.movement?.characterId || "",
-                        from: item.movement?.from || "",
-                        to: item.movement?.to || "",
-                        description: item.movement?.description,
-                      }
-                    : undefined,
+                movement: updatedMovement 
+                  ? {
+                      characterId: updatedMovement.characterId || "",
+                      from: updatedMovement.from || "",
+                      to: updatedMovement.to || "",
+                      description: updatedMovement.description,
+                    }
+                  : undefined,
               };
 
               toast.loading(`Création de l'élement ${i + 1} sur ${parsed.script.length}`, { id: idToast });
@@ -665,156 +695,62 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
               />
             </Button>
           </div>
+          <Link href={`/scripts/${scriptId}/apercu`} passHref>
+            <Button variant="outline">
+              <EyeIcon className="mr-2 h-4 w-4" />
+              Aperçu
+            </Button>
+          </Link>
           <ScriptPDFGenerator script={script} characters={characters} />
         </div>
       </div>
 
-      <Tabs defaultValue="script" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="script">Script</TabsTrigger>
-          <TabsTrigger value="preview">Aperçu</TabsTrigger>
-        </TabsList>
-        <TabsContent value="script" className="space-y-4">
-          <Card className="p-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Contenu du script</h2>
-              <div className="flex gap-2">
-                {selectedItems.length > 0 && (
-                  <Button variant="destructive" onClick={handleDeleteSelected}>
-                    <Trash2Icon />
-                    Supprimer ({selectedItems.length})
-                  </Button>
-                )}
-                <Button onClick={() => setIsAddItemDialogOpen(true)}>
-                  <PlusIcon />
-                  Ajouter un élément
-                </Button>
-              </div>
-            </div>
+      <Card className="p-4">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Contenu du script</h2>
+          <div className="flex gap-2">
+            {selectedItems.length > 0 && (
+              <Button variant="destructive" onClick={handleDeleteSelected}>
+                <Trash2Icon />
+                Supprimer ({selectedItems.length})
+              </Button>
+            )}
+            <Button onClick={() => setIsAddItemDialogOpen(true)}>
+              <PlusIcon />
+              Ajouter un élément
+            </Button>
+          </div>
+        </div>
 
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
-              <SortableContext items={script.map((item) => item.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-3">
-                  {script.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      {`Aucun élément dans le script. Cliquez sur "Ajouter un élément" pour commencer.`}
-                    </div>
-                  ) : (
-                    script.map((item) => (
-                      <ScriptItem
-                        key={item.id}
-                        item={item}
-                        characters={characters}
-                        characterColor={getCharacterColor(item.character || "")}
-                        onUpdate={handleUpdateItem}
-                        onDelete={handleDeleteItem}
-                        onAddBefore={(newItem) => handleAddItemAtPosition(newItem, item.id, "before")}
-                        onAddAfter={(newItem) => handleAddItemAtPosition(newItem, item.id, "after")}
-                        isSelected={selectedItems.includes(item.id)}
-                        onSelect={(isSelected) => handleSelectItem(item.id, isSelected)}
-                        existingLightings={getExistingLightings()}
-                        existingSounds={getExistingSounds()}
-                      />
-                    ))
-                  )}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
+          <SortableContext items={script.map((item) => item.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-3">
+              {script.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  {`Aucun élément dans le script. Cliquez sur "Ajouter un élément" pour commencer.`}
                 </div>
-              </SortableContext>
-            </DndContext>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="preview" className="space-y-4">
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Aperçu du script</h2>
-            <div className="prose max-w-none">
-              {script.map((item) => {
-                const character = item.character ? characters.find((c) => c.id === item.character) : null;
-
-                if (item.type === "dialogue" && character) {
-                  const processedText = item.text;
-
-                  return (
-                    <div key={item.id} className="mb-4">
-                      <p className="font-bold" style={{ color: character.color }}>
-                        {`${character.stageName}:`}
-                      </p>
-                      <p className="ml-8">{processedText}</p>
-                    </div>
-                  );
-                } else if (item.type === "narration") {
-                  const processedText = item.text;
-
-                  const narratorPrefix = character ? (
-                    <span className="font-bold" style={{ color: character.color }}>
-                      {`${character.stageName}: `}
-                    </span>
-                  ) : null;
-
-                  return (
-                    <div key={item.id} className="mb-4 italic">
-                      {narratorPrefix}
-                      <p>{processedText}</p>
-                    </div>
-                  );
-                } else if (item.type === "lighting" && item.lighting) {
-                  return (
-                    <div key={item.id} className="mb-4 p-2 bg-slate-100 dark:bg-slate-800 rounded">
-                      <p className="text-sm font-semibold">LUMIÈRE:</p>
-                      <p className="text-sm">
-                        Position: {`${item.lighting.position}`}, Couleur:{" "}
-                        <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: item.lighting.color }}></span>{" "}
-                        {`${item.lighting.color}`}
-                      </p>
-                    </div>
-                  );
-                } else if (item.type === "sound" && item.sound) {
-                  return (
-                    <div key={item.id} className="mb-4 p-2 bg-slate-100 dark:bg-slate-800 rounded">
-                      <p className="text-sm font-semibold">SON:</p>
-                      <p className="text-sm">
-                        {`${item.sound.description}`} ({`${item.sound.timecode}`})
-                      </p>
-                      <p className="text-xs text-blue-500 underline">{`${item.sound.url}`}</p>
-                    </div>
-                  );
-                } else if (item.type === "image" && item.image) {
-                  return (
-                    <div key={item.id} className="mb-4 p-2 bg-slate-100 dark:bg-slate-800 rounded">
-                      <p className="text-sm font-semibold">IMAGE:</p>
-                      <div className="my-2">
-                        <div className="h-20 w-full flex items-center justify-center border rounded bg-gray-100">
-                          <p className="text-gray-500">Image temporairement désactivée</p>
-                        </div>
-                      </div>
-                      {item.image.caption && <p className="text-sm text-center italic mt-1">{`${item.image.caption}`}</p>}
-                    </div>
-                  );
-                } else if (item.type === "staging" && item.staging) {
-                  return (
-                    <div key={item.id} className="mb-4 p-2 bg-slate-100 dark:bg-slate-800 rounded">
-                      <p className="text-sm font-semibold">MISE EN SCÈNE - {`${item.staging.item}`}:</p>
-                      <p className="text-sm">Position: {`${item.staging.position}`}</p>
-                      {item.staging.description && <p className="text-sm italic mt-1">{`${item.staging.description}`}</p>}
-                    </div>
-                  );
-                } else if (item.type === "movement" && item.movement) {
-                  const movingCharacter = characters.find((c) => c.id === item.movement?.characterId);
-                  return (
-                    <div key={item.id} className="mb-4 p-2 bg-slate-100 dark:bg-slate-800 rounded">
-                      <p className="text-sm font-semibold">MOUVEMENT:</p>
-                      <p className="text-sm">
-                        {`${movingCharacter?.stageName || "Personnage"}`}: {`${item.movement.from}`} → {`${item.movement.to}`}
-                      </p>
-                      {item.movement.description && <p className="text-sm italic mt-1">{`${item.movement.description}`}</p>}
-                    </div>
-                  );
-                }
-                return null;
-              })}
+              ) : (
+                script.map((item) => (
+                  <ScriptItem
+                    key={item.id}
+                    item={item}
+                    characters={characters}
+                    characterColor={getCharacterColor(item.character || "")}
+                    onUpdate={handleUpdateItem}
+                    onDelete={handleDeleteItem}
+                    onAddBefore={(newItem) => handleAddItemAtPosition(newItem, item.id, "before")}
+                    onAddAfter={(newItem) => handleAddItemAtPosition(newItem, item.id, "after")}
+                    isSelected={selectedItems.includes(item.id)}
+                    onSelect={(isSelected) => handleSelectItem(item.id, isSelected)}
+                    existingLightings={getExistingLightings()}
+                    existingSounds={getExistingSounds()}
+                  />
+                ))
+              )}
             </div>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          </SortableContext>
+        </DndContext>
+      </Card>
 
       <AddItemDialog
         open={isAddItemDialogOpen}

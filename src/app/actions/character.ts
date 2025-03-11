@@ -25,6 +25,7 @@ export async function createCharacter(scriptId: string, data: z.infer<typeof cha
     });
 
     revalidatePath(`/scripts/${scriptId}`);
+    revalidatePath(`/scripts/${scriptId}/apercu`);
     return { success: true, data: character };
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -68,6 +69,7 @@ export async function updateCharacter(id: string, data: z.infer<typeof character
     });
 
     revalidatePath(`/scripts/${character.scriptId}`);
+    revalidatePath(`/scripts/${character.scriptId}/apercu`);
     return { success: true, data: updatedCharacter };
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -94,6 +96,7 @@ export async function deleteCharacter(id: string) {
     });
 
     revalidatePath(`/scripts/${character.scriptId}`);
+    revalidatePath(`/scripts/${character.scriptId}/apercu`);
     return { success: true };
   } catch (error) {
     return { success: false, error: "Une erreur est survenue lors de la suppression du personnage" };
