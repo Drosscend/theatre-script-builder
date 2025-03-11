@@ -1,0 +1,88 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
+import { deleteScript } from "@/app/actions/script";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+
+interface DeleteScriptButtonProps {
+  scriptId: string;
+  scriptName: string;
+}
+
+export function DeleteScriptButton({ scriptId, scriptName }: DeleteScriptButtonProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const router = useRouter();
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const result = await deleteScript(scriptId);
+      
+      if (result.success) {
+        toast("Script supprimé", {
+          description: "Le script a été supprimé avec succès",
+        });
+        router.push("/");
+      } else {
+        toast.error("Erreur", {
+          description: "Une erreur est survenue lors de la suppression du script",
+        });
+        setIsOpen(false);
+      }
+    } catch (error) {
+      toast.error("Erreur", {
+        description: "Une erreur est survenue lors de la suppression du script",
+      });
+      setIsOpen(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+      <AlertDialogTrigger asChild>
+        <Button variant="destructive" size="sm">
+          <Trash2 className="mr-2 h-4 w-4" />
+          Supprimer
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer ce script ?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Vous êtes sur le point de supprimer le script "{scriptName}". Cette action est irréversible.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+              e.preventDefault();
+              handleDelete();
+            }}
+            disabled={isDeleting}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isDeleting ? "Suppression..." : "Supprimer"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+} 
