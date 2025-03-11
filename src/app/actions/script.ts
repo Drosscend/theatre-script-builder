@@ -10,58 +10,6 @@ const scriptSchema = z.object({
   description: z.string().optional(),
 });
 
-const characterSchema = z.object({
-  realName: z.string().min(1, "Le nom réel est requis"),
-  stageName: z.string().min(1, "Le nom de scène est requis"),
-  role: z.string(),
-  color: z.string().regex(/^#[0-9A-F]{6}$/i, "Format de couleur invalide"),
-});
-
-const scriptItemSchema = z.object({
-  type: z.enum(["dialogue", "narration", "lighting", "sound", "image", "staging", "movement"]),
-  text: z.string().optional(),
-  characterId: z.string().optional(),
-
-  // Champs spécifiques aux types
-  lighting: z
-    .object({
-      position: z.string(),
-      color: z.string(),
-    })
-    .optional(),
-
-  sound: z
-    .object({
-      url: z.string(),
-      timecode: z.string(),
-      description: z.string().optional(),
-    })
-    .optional(),
-
-  image: z
-    .object({
-      url: z.string(),
-      caption: z.string().optional(),
-    })
-    .optional(),
-
-  staging: z
-    .object({
-      item: z.string(),
-      position: z.string(),
-      description: z.string().optional(),
-    })
-    .optional(),
-
-  movement: z
-    .object({
-      characterId: z.string(),
-      from: z.string(),
-      to: z.string(),
-      description: z.string().optional(),
-    })
-    .optional(),
-});
 
 // Créer un nouveau script
 export async function createScript(data: z.infer<typeof scriptSchema>) {
