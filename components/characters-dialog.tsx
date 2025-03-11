@@ -6,56 +6,119 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createCharacter, updateCharacter, deleteCharacter } from "@/app/actions/character";
 import type { Character } from "./script-editor";
+import { toast } from "sonner";
 
 interface CharactersDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  characters: Character[];
-  setCharacters: (characters: Character[]) => void;
+  characters: typeof Character[];
+  setCharacters: (characters: typeof Character[]) => void;
+  scriptId: string;
 }
 
-export default function CharactersDialog({ open, onOpenChange, characters, setCharacters }: CharactersDialogProps) {
+export default function CharactersDialog({ open, onOpenChange, characters, setCharacters, scriptId }: CharactersDialogProps) {
   const [newRealName, setNewRealName] = useState("");
   const [newStageName, setNewStageName] = useState("");
   const [newRole, setNewRole] = useState("");
   const [newColor, setNewColor] = useState("#e2e8f0");
+  const [isLoading, setIsLoading] = useState(false);
 
   /**
    * Add a new character to the list
    */
-  const handleAddCharacter = () => {
+  const handleAddCharacter = async () => {
     if (newRealName && newStageName) {
-      const newCharacter: Character = {
-        id: Date.now().toString(),
-        realName: newRealName,
-        stageName: newStageName,
-        role: newRole,
-        color: newColor,
-      };
+      setIsLoading(true);
+      try {
+        const result = await createCharacter(scriptId, {
+          realName: newRealName,
+          stageName: newStageName,
+          role: newRole,
+          color: newColor,
+        });
 
-      setCharacters([...characters, newCharacter]);
+        if (result.success && result.data) {
+          setCharacters([...characters, result.data]);
+          toast("Personnage ajouté", {
+            description: "Le personnage a été ajouté avec succès"
+          });
 
-      // Reset form
-      setNewRealName("");
-      setNewStageName("");
-      setNewRole("");
-      setNewColor("#e2e8f0");
+          // Reset form
+          setNewRealName("");
+          setNewStageName("");
+          setNewRole("");
+          setNewColor("#e2e8f0");
+        } else {
+          toast.error("Erreur", {
+            description: "Une erreur est survenue lors de l'ajout du personnage"
+          });
+        }
+      } catch (error) {
+        toast.error("Erreur", {
+          description: "Une erreur est survenue lors de l'ajout du personnage"
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
   /**
    * Delete a character from the list
    */
-  const handleDeleteCharacter = (id: string) => {
-    setCharacters(characters.filter((char) => char.id !== id));
+  const handleDeleteCharacter = async (id: string) => {
+    setIsLoading(true);
+    try {
+      const result = await deleteCharacter(id);
+      
+      if (result.success) {
+        setCharacters(characters.filter((char) => char.id !== id));
+        toast("Personnage supprimé", {
+          description: "Le personnage a été supprimé avec succès"
+        });
+      } else {
+        toast.error("Erreur", {
+          description: "Une erreur est survenue lors de la suppression du personnage"
+        });
+      }
+    } catch (error) {
+      toast.error("Erreur", {
+        description: "Une erreur est survenue lors de la suppression du personnage"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   /**
    * Update an existing character property
    */
-  const handleUpdateCharacter = (id: string, field: keyof Character, value: string) => {
-    setCharacters(characters.map((char) => (char.id === id ? { ...char, [field]: value } : char)));
+  const handleUpdateCharacter = async (id: string, field: keyof typeof Character, value: string) => {
+    // Mettre à jour localement pour une meilleure réactivité
+    const updatedCharacters = characters.map((char) => 
+      char.id === id ? { ...char, [field]: value } : char
+    );
+    setCharacters(updatedCharacters);
+    
+    // Trouver le personnage mis à jour
+    const updatedChar = updatedCharacters.find(char => char.id === id);
+    if (!updatedChar) return;
+    
+    try {
+      // Mettre à jour dans la base de données
+      await updateCharacter(id, {
+        realName: updatedChar.realName,
+        stageName: updatedChar.stageName,
+        role: updatedChar.role,
+        color: updatedChar.color,
+      });
+    } catch (error) {
+      toast.error("Erreur", {
+        description: "Une erreur est survenue lors de la mise à jour du personnage"
+      });
+    }
   };
 
   return (
@@ -92,7 +155,7 @@ export default function CharactersDialog({ open, onOpenChange, characters, setCh
                       onChange={(e) => handleUpdateCharacter(char.id, "color", e.target.value)}
                       className="h-10 p-1"
                     />
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteCharacter(char.id)}>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteCharacter(char.id)} disabled={isLoading}>
                       <Trash2Icon />
                     </Button>
                   </div>
@@ -129,7 +192,11 @@ export default function CharactersDialog({ open, onOpenChange, characters, setCh
                 <Input id="color" type="color" value={newColor} onChange={(e) => setNewColor(e.target.value)} className="h-10 p-1" />
               </div>
             </div>
-            <Button onClick={handleAddCharacter} disabled={!newRealName || !newStageName} className="w-full">
+            <Button 
+              onClick={handleAddCharacter} 
+              disabled={!newRealName || !newStageName || isLoading} 
+              className="w-full"
+            >
               <PlusIcon />
               Ajouter
             </Button>

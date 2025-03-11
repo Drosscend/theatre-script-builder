@@ -8,3 +8,88 @@ generator client {
   previewFeatures = ["driverAdapters"]
 }
 
+model Script {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  items       ScriptItem[]
+  characters  Character[]
+}
+
+model Character {
+  id        String      @id @default(cuid())
+  realName  String
+  stageName String
+  role      String
+  color     String
+  scriptId  String
+  script    Script      @relation(fields: [scriptId], references: [id], onDelete: Cascade)
+  dialogues ScriptItem[] @relation("CharacterDialogues")
+  movements Movement[]  @relation("CharacterMovements")
+}
+
+model ScriptItem {
+  id          String    @id @default(cuid())
+  type        String    // "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement"
+  text        String?
+  position    Int       // Pour l'ordre des éléments
+  scriptId    String
+  script      Script    @relation(fields: [scriptId], references: [id], onDelete: Cascade)
+  characterId String?
+  character   Character? @relation("CharacterDialogues", fields: [characterId], references: [id], onDelete: SetNull)
+  
+  // Relations avec les différents types d'éléments
+  lighting    Lighting?
+  sound       Sound?
+  image       Image?
+  staging     Staging?
+  movement    Movement?
+}
+
+model Lighting {
+  id         String     @id @default(cuid())
+  position   String
+  color      String
+  scriptItem ScriptItem @relation(fields: [scriptItemId], references: [id], onDelete: Cascade)
+  scriptItemId String   @unique
+}
+
+model Sound {
+  id          String     @id @default(cuid())
+  url         String
+  timecode    String
+  description String?
+  scriptItem  ScriptItem @relation(fields: [scriptItemId], references: [id], onDelete: Cascade)
+  scriptItemId String    @unique
+}
+
+model Image {
+  id          String     @id @default(cuid())
+  url         String
+  caption     String?
+  scriptItem  ScriptItem @relation(fields: [scriptItemId], references: [id], onDelete: Cascade)
+  scriptItemId String    @unique
+}
+
+model Staging {
+  id          String     @id @default(cuid())
+  item        String
+  position    String
+  description String?
+  scriptItem  ScriptItem @relation(fields: [scriptItemId], references: [id], onDelete: Cascade)
+  scriptItemId String    @unique
+}
+
+model Movement {
+  id          String     @id @default(cuid())
+  from        String
+  to          String
+  description String?
+  characterId String
+  character   Character  @relation("CharacterMovements", fields: [characterId], references: [id], onDelete: Cascade)
+  scriptItem  ScriptItem @relation(fields: [scriptItemId], references: [id], onDelete: Cascade)
+  scriptItemId String    @unique
+}
+

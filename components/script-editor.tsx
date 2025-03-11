@@ -4,118 +4,282 @@ import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter,
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { DownloadIcon, PlusIcon, Trash2Icon, UploadIcon, UsersIcon } from "lucide-react";
-import Image from "next/image";
-import type React from "react";
-import { useEffect, useState } from "react";
+import React from "react";
+import { useState } from "react";
 import AddItemDialog from "@/components/add-item-dialog";
 import CharactersDialog from "@/components/characters-dialog";
 import ScriptItem from "@/components/script-item";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { createScriptItem, updateScriptItem, deleteScriptItem, reorderScriptItems } from "@/app/actions/script-item";
+import { createCharacter, deleteCharacter } from "@/app/actions/character";
 
-export type Character = {
-  id: string;
-  realName: string;
-  stageName: string;
-  role: string;
-  color: string;
+export const Character = {
+  id: "",
+  realName: "",
+  stageName: "",
+  role: "",
+  color: ""
 };
 
-export type LightingEffect = {
-  position: string;
-  color: string;
+export const LightingEffect = {
+  position: "",
+  color: ""
 };
 
-export type SoundEffect = {
-  url: string;
-  timecode: string;
-  description: string;
+export const SoundEffect = {
+  url: "",
+  timecode: "",
+  description: ""
 };
 
-export type ScriptItemType = {
-  id: string;
-  type: "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement";
-  character?: string;
-  text?: string;
-  lighting?: LightingEffect;
-  sound?: SoundEffect;
-  image?: {
+export const ScriptItemType = {
+  id: "",
+  type: "dialogue" as "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement",
+  character: undefined as string | undefined,
+  text: undefined as string | undefined,
+  lighting: undefined as typeof LightingEffect | undefined,
+  sound: undefined as typeof SoundEffect | undefined,
+  image: undefined as {
     url: string;
     caption?: string;
-  };
-  staging?: {
+  } | undefined,
+  staging: undefined as {
     item: string;
     position: string;
     description?: string;
-  };
-  movement?: {
-    character: string;
+  } | undefined,
+  movement: undefined as {
+    characterId: string;
     from: string;
     to: string;
     description?: string;
-  };
-  tags?: string[];
+  } | undefined
 };
 
-export default function ScriptEditor() {
-  const [scriptItems, setScriptItems] = useState<ScriptItemType[]>([]);
-  const [characters, setCharacters] = useState<Character[]>([]);
-  const [isAddItemOpen, setIsAddItemOpen] = useState(false);
-  const [isCharactersOpen, setIsCharactersOpen] = useState(false);
+export const ScriptEditorProps = {
+  initialScript: [] as Array<typeof ScriptItemType & {
+    id: string;
+    type: "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement";
+  }>,
+  initialCharacters: [] as Array<typeof Character & {
+    id: string;
+    realName: string;
+    stageName: string;
+    role: string;
+    color: string;
+  }>,
+  scriptId: ""
+};
+
+export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typeof ScriptEditorProps) {
+  const [script, setScript] = useState<Array<typeof ScriptItemType & {
+    id: string;
+    type: "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement";
+  }>>(initialScript);
+  const [characters, setCharacters] = useState<Array<typeof Character & {
+    id: string;
+    realName: string;
+    stageName: string;
+    role: string;
+    color: string;
+  }>>(initialCharacters);
+  const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
+  const [isCharactersDialogOpen, setIsCharactersDialogOpen] = useState(false);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
 
-  useEffect(() => {
-    // Load data from localStorage on component mount
-    const savedScript = localStorage.getItem("theatreScript");
-    const savedCharacters = localStorage.getItem("theatreCharacters");
+  const handleAddItem = async (item: typeof ScriptItemType) => {
+    try {
+      const result = await createScriptItem(scriptId, {
+        type: item.type,
+        text: item.text,
+        characterId: item.character,
+        lighting: item.lighting,
+        sound: item.sound,
+        image: item.image,
+        staging: item.staging,
+        movement: item.type === "movement" ? {
+          characterId: item.movement?.characterId || "",
+          from: item.movement?.from || "",
+          to: item.movement?.to || "",
+          description: item.movement?.description
+        } : undefined
+      });
 
-    if (savedScript) {
-      try {
-        setScriptItems(JSON.parse(savedScript));
-      } catch (e) {
-        console.error("Failed to parse saved script", e);
+      if (result.success && result.data) {
+        const data = result.data as { id: string; type: string; characterId?: string; text?: string; lighting?: { position: string; color: string }; sound?: { url: string; timecode: string; description?: string }; image?: { url: string; caption?: string }; staging?: { item: string; position: string; description?: string }; movement?: { characterId: string; from: string; to: string; description?: string } };
+        const newItem: typeof ScriptItemType = {
+          id: data.id,
+          type: data.type as "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement",
+          character: data.characterId || undefined,
+          text: data.text || undefined,
+          lighting: data.lighting ? {
+            position: data.lighting.position,
+            color: data.lighting.color
+          } : undefined,
+          sound: data.sound ? {
+            url: data.sound.url,
+            timecode: data.sound.timecode,
+            description: data.sound.description || ""
+          } : undefined,
+          image: data.image ? {
+            url: data.image.url,
+            caption: data.image.caption
+          } : undefined,
+          staging: data.staging ? {
+            item: data.staging.item,
+            position: data.staging.position,
+            description: data.staging.description
+          } : undefined,
+          movement: data.movement ? {
+            characterId: data.movement.characterId,
+            from: data.movement.from,
+            to: data.movement.to,
+            description: data.movement.description
+          } : undefined
+        };
+        
+        setScript([...script, newItem]);
+        toast("Élément ajouté", {
+          description: "L'élément a été ajouté avec succès"
+        });
       }
+    } catch (error) {
+      toast.error("Erreur", {
+        description: "Une erreur est survenue lors de l'ajout de l'élément"
+      });
+    } finally {
+      setIsAddItemDialogOpen(false);
     }
-
-    if (savedCharacters) {
-      try {
-        setCharacters(JSON.parse(savedCharacters));
-      } catch (e) {
-        console.error("Failed to parse saved characters", e);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    // Save data to localStorage whenever it changes
-    localStorage.setItem("theatreScript", JSON.stringify(scriptItems));
-    localStorage.setItem("theatreCharacters", JSON.stringify(characters));
-  }, [scriptItems, characters]);
-
-  const handleAddItem = (item: ScriptItemType) => {
-    setScriptItems([...scriptItems, item]);
-    setIsAddItemOpen(false);
   };
 
-  const handleAddItemAtPosition = (item: ScriptItemType, targetId: string, position: "before" | "after") => {
-    const targetIndex = scriptItems.findIndex((item) => item.id === targetId);
+  const handleAddItemAtPosition = async (item: typeof ScriptItemType, targetId: string, position: "before" | "after") => {
+    const targetIndex = script.findIndex((item) => item.id === targetId);
     if (targetIndex === -1) return;
 
-    const newIndex = position === "after" ? targetIndex + 1 : targetIndex;
-    const newItems = [...scriptItems];
-    newItems.splice(newIndex, 0, item);
-    setScriptItems(newItems);
+    try {
+      const newIndex = position === "after" ? targetIndex + 1 : targetIndex;
+      
+      const result = await createScriptItem(scriptId, {
+        type: item.type,
+        text: item.text,
+        characterId: item.character,
+        lighting: item.lighting,
+        sound: item.sound,
+        image: item.image,
+        staging: item.staging,
+        movement: item.type === "movement" ? {
+          characterId: item.movement?.characterId || "",
+          from: item.movement?.from || "",
+          to: item.movement?.to || "",
+          description: item.movement?.description
+        } : undefined
+      }, newIndex);
+
+      if (result.success && result.data) {
+        const data = result.data as { id: string; type: string; characterId?: string; text?: string; lighting?: { position: string; color: string }; sound?: { url: string; timecode: string; description?: string }; image?: { url: string; caption?: string }; staging?: { item: string; position: string; description?: string }; movement?: { characterId: string; from: string; to: string; description?: string } };
+        const newItem: typeof ScriptItemType = {
+          id: data.id,
+          type: data.type as "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement",
+          character: data.characterId || undefined,
+          text: data.text || undefined,
+          lighting: data.lighting ? {
+            position: data.lighting.position,
+            color: data.lighting.color
+          } : undefined,
+          sound: data.sound ? {
+            url: data.sound.url,
+            timecode: data.sound.timecode,
+            description: data.sound.description || ""
+          } : undefined,
+          image: data.image ? {
+            url: data.image.url,
+            caption: data.image.caption
+          } : undefined,
+          staging: data.staging ? {
+            item: data.staging.item,
+            position: data.staging.position,
+            description: data.staging.description
+          } : undefined,
+          movement: data.movement ? {
+            characterId: data.movement.characterId,
+            from: data.movement.from,
+            to: data.movement.to,
+            description: data.movement.description
+          } : undefined
+        };
+        
+        const newItems = [...script];
+        newItems.splice(newIndex, 0, newItem);
+        setScript(newItems);
+        
+        toast("Élément ajouté", {
+          description: "L'élément a été ajouté avec succès"
+        });
+      }
+    } catch (error) {
+      toast.error("Erreur", {
+        description: "Une erreur est survenue lors de l'ajout de l'élément"
+      });
+    } finally {
+      setIsAddItemDialogOpen(false);
+    }
   };
 
-  const handleUpdateItem = (updatedItem: ScriptItemType) => {
-    setScriptItems(scriptItems.map((item) => (item.id === updatedItem.id ? updatedItem : item)));
+  const handleUpdateItem = async (updatedItem: typeof ScriptItemType) => {
+    try {
+      const result = await updateScriptItem(updatedItem.id, {
+        type: updatedItem.type,
+        text: updatedItem.text,
+        characterId: updatedItem.character,
+        lighting: updatedItem.lighting,
+        sound: updatedItem.sound,
+        image: updatedItem.image,
+        staging: updatedItem.staging,
+        movement: updatedItem.type === "movement" ? {
+          characterId: updatedItem.movement?.characterId || "",
+          from: updatedItem.movement?.from || "",
+          to: updatedItem.movement?.to || "",
+          description: updatedItem.movement?.description
+        } : undefined
+      });
+
+      if (result.success) {
+        setScript(script.map((item) => (item.id === updatedItem.id ? updatedItem : item)));
+        toast("Élément mis à jour", {
+          description: "L'élément a été mis à jour avec succès"
+        });
+      }
+    } catch (error) {
+      toast.error("Erreur", {
+        description: "Une erreur est survenue lors de la mise à jour de l'élément"
+      });
+    } finally {
+      setIsAddItemDialogOpen(false);
+    }
   };
 
-  const handleDeleteItem = (id: string) => {
-    setScriptItems(scriptItems.filter((item) => item.id !== id));
+  const handleDeleteItem = async (id: string) => {
+    try {
+      const result = await deleteScriptItem(id);
+
+      if (result.success) {
+        setScript(script.filter((item) => item.id !== id));
+        toast("Élément supprimé", {
+          description: "L'élément a été supprimé avec succès"
+        });
+      }
+    } catch (error) {
+      toast.error("Erreur", {
+        description: "Une erreur est survenue lors de la suppression de l'élément"
+      });
+    } finally {
+      setIsAddItemDialogOpen(false);
+    }
   };
 
   const handleSelectItem = (id: string, isSelected: boolean) => {
@@ -126,26 +290,60 @@ export default function ScriptEditor() {
     }
   };
 
-  const handleDeleteSelected = () => {
-    setScriptItems(scriptItems.filter((item) => !selectedItems.includes(item.id)));
-    setSelectedItems([]);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (active.id !== over?.id) {
-      setScriptItems((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over?.id);
-
-        return arrayMove(items, oldIndex, newIndex);
+  const handleDeleteSelected = async () => {
+    try {
+      const deletePromises = selectedItems.map(id => deleteScriptItem(id));
+      const results = await Promise.all(deletePromises);
+      
+      const allSuccessful = results.every(result => result.success);
+      
+      if (allSuccessful) {
+        setScript(script.filter((item) => !selectedItems.includes(item.id)));
+        setSelectedItems([]);
+        toast("Éléments supprimés", {
+          description: "Les éléments sélectionnés ont été supprimés avec succès"
+        });
+      }
+    } catch (error) {
+      toast.error("Erreur", {
+        description: "Une erreur est survenue lors de la suppression des éléments sélectionnés"
       });
     }
   };
 
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const oldIndex = script.findIndex((item) => item.id === active.id);
+      const newIndex = script.findIndex((item) => item.id === over?.id);
+      
+      const newItems = arrayMove(script, oldIndex, newIndex);
+      setScript(newItems);
+      
+      try {
+        const itemIds = newItems.map(item => item.id);
+        const result = await reorderScriptItems(scriptId, itemIds);
+        
+        if (!result.success) {
+          setScript(script);
+          toast.error("Erreur", {
+            description: "Une erreur est survenue lors de la réorganisation des éléments"
+          });
+        }
+      } catch (error) {
+        setScript(script);
+        toast.error("Erreur", {
+          description: "Une erreur est survenue lors de la réorganisation des éléments"
+        });
+      } finally {
+        setIsAddItemDialogOpen(false);
+      }
+    }
+  };
+
   const exportScript = () => {
-    const dataStr = JSON.stringify({ script: scriptItems, characters }, null, 2);
+    const dataStr = JSON.stringify({ script, characters }, null, 2);
     const dataUri = `data:application/json;charset=utf-8,${encodeURIComponent(dataStr)}`;
 
     const exportFileDefaultName = `theatre-script-${new Date().toISOString().slice(0, 10)}.json`;
@@ -156,31 +354,121 @@ export default function ScriptEditor() {
     linkElement.click();
   };
 
-  const importScript = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const importScript = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const content = e.target?.result as string;
         const parsed = JSON.parse(content);
 
-        if (parsed.script && Array.isArray(parsed.script)) {
-          setScriptItems(parsed.script);
+        if (parsed.characters && Array.isArray(parsed.characters)) {
+          const deletePromises = characters.map(char => deleteCharacter(char.id));
+          await Promise.all(deletePromises);
+          
+          const createPromises = parsed.characters.map((char: any) => {
+            const { id, ...charData } = char;
+            return createCharacter(scriptId, charData);
+          });
+          const results = await Promise.all(createPromises);
+          
+          const newCharacters = results
+            .filter(result => result.success && result.data)
+            .map(result => {
+              const data = result.data as { id: string; realName: string; stageName: string; role: string; color: string };
+              return {
+                id: data.id,
+                realName: data.realName,
+                stageName: data.stageName,
+                role: data.role,
+                color: data.color
+              } as typeof Character;
+            });
+          
+          setCharacters(newCharacters);
         }
 
-        if (parsed.characters && Array.isArray(parsed.characters)) {
-          setCharacters(parsed.characters);
+        if (parsed.script && Array.isArray(parsed.script)) {
+          const deletePromises = script.map(item => deleteScriptItem(item.id));
+          await Promise.all(deletePromises);
+          
+          const newItems: typeof ScriptItemType[] = [];
+          for (let i = 0; i < parsed.script.length; i++) {
+            const item = parsed.script[i];
+            
+            const apiItem = {
+              type: item.type,
+              text: item.text,
+              characterId: item.character,
+              lighting: item.lighting,
+              sound: item.sound,
+              image: item.image,
+              staging: item.staging,
+              movement: item.type === "movement" ? {
+                characterId: item.movement?.characterId || "",
+                from: item.movement?.from || "",
+                to: item.movement?.to || "",
+                description: item.movement?.description
+              } : undefined
+            };
+            
+            const result = await createScriptItem(scriptId, apiItem, i);
+            
+            if (result.success && result.data) {
+              const data = result.data as { id: string; type: string; characterId?: string; text?: string; lighting?: { position: string; color: string }; sound?: { url: string; timecode: string; description?: string }; image?: { url: string; caption?: string }; staging?: { item: string; position: string; description?: string }; movement?: { characterId: string; from: string; to: string; description?: string } };
+              const newItem: typeof ScriptItemType = {
+                id: data.id,
+                type: data.type as "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement",
+                character: data.characterId || undefined,
+                text: data.text || undefined,
+                lighting: data.lighting ? {
+                  position: data.lighting.position,
+                  color: data.lighting.color
+                } : undefined,
+                sound: data.sound ? {
+                  url: data.sound.url,
+                  timecode: data.sound.timecode,
+                  description: data.sound.description || ""
+                } : undefined,
+                image: data.image ? {
+                  url: data.image.url,
+                  caption: data.image.caption
+                } : undefined,
+                staging: data.staging ? {
+                  item: data.staging.item,
+                  position: data.staging.position,
+                  description: data.staging.description
+                } : undefined,
+                movement: data.movement ? {
+                  characterId: data.movement.characterId,
+                  from: data.movement.from,
+                  to: data.movement.to,
+                  description: data.movement.description
+                } : undefined
+              };
+              
+              newItems.push(newItem);
+            }
+          }
+          
+          setScript(newItems);
         }
+        
+        toast("Import réussi", {
+          description: "Le script a été importé avec succès"
+        });
       } catch (error) {
-        console.error("Failed to parse imported file", error);
-        alert("Le fichier importé n'est pas valide.");
+        toast.error("Erreur", {
+          description: "Le fichier importé n'est pas valide."
+        });
+      } finally {
+        setIsAddItemDialogOpen(false);
       }
     };
     reader.readAsText(file);
 
-    // Reset the input value so the same file can be imported again if needed
     event.target.value = "";
   };
 
@@ -194,7 +482,7 @@ export default function ScriptEditor() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Éditeur de Pièce de Théâtre</h1>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setIsCharactersOpen(true)}>
+          <Button variant="outline" onClick={() => setIsCharactersDialogOpen(true)}>
             <UsersIcon />
             Personnages
           </Button>
@@ -228,7 +516,7 @@ export default function ScriptEditor() {
                     Supprimer ({selectedItems.length})
                   </Button>
                 )}
-                <Button onClick={() => setIsAddItemOpen(true)}>
+                <Button onClick={() => setIsAddItemDialogOpen(true)}>
                   <PlusIcon />
                   Ajouter un élément
                 </Button>
@@ -236,14 +524,14 @@ export default function ScriptEditor() {
             </div>
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
-              <SortableContext items={scriptItems.map((item) => item.id)} strategy={verticalListSortingStrategy}>
+              <SortableContext items={script.map((item) => item.id)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-3">
-                  {scriptItems.length === 0 ? (
+                  {script.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       {`Aucun élément dans le script. Cliquez sur "Ajouter un élément" pour commencer.`}
                     </div>
                   ) : (
-                    scriptItems.map((item) => (
+                    script.map((item) => (
                       <ScriptItem
                         key={item.id}
                         item={item}
@@ -268,11 +556,10 @@ export default function ScriptEditor() {
           <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">Aperçu du script</h2>
             <div className="prose max-w-none">
-              {scriptItems.map((item) => {
+              {script.map((item) => {
                 const character = item.character ? characters.find((c) => c.id === item.character) : null;
 
                 if (item.type === "dialogue" && character) {
-                  // Process character mentions in dialogue
                   const processedText = item.text;
 
                   return (
@@ -284,10 +571,8 @@ export default function ScriptEditor() {
                     </div>
                   );
                 } else if (item.type === "narration") {
-                  // Process character mentions in narration
                   const processedText = item.text;
 
-                  // If narration has an associated character, display their name
                   const narratorPrefix = character ? (
                     <span className="font-bold" style={{ color: character.color }}>
                       {`${character.stageName}: `}
@@ -326,11 +611,9 @@ export default function ScriptEditor() {
                     <div key={item.id} className="mb-4 p-2 bg-slate-100 dark:bg-slate-800 rounded">
                       <p className="text-sm font-semibold">IMAGE:</p>
                       <div className="my-2">
-                        <Image
-                          src={item.image.url || "/placeholder.svg?height=300&width=400"}
-                          alt={item.image.caption || "Image de scène"}
-                          className="max-h-64 object-contain mx-auto border rounded"
-                        />
+                        <div className="h-20 w-full flex items-center justify-center border rounded bg-gray-100">
+                          <p className="text-gray-500">Image temporairement désactivée</p>
+                        </div>
                       </div>
                       {item.image.caption && <p className="text-sm text-center italic mt-1">{`{${item.image.caption}}`}</p>}
                     </div>
@@ -344,7 +627,7 @@ export default function ScriptEditor() {
                     </div>
                   );
                 } else if (item.type === "movement" && item.movement) {
-                  const movingCharacter = characters.find((c) => c.id === item.movement?.character);
+                  const movingCharacter = characters.find((c) => c.id === item.movement?.characterId);
                   return (
                     <div key={item.id} className="mb-4 p-2 bg-slate-100 dark:bg-slate-800 rounded">
                       <p className="text-sm font-semibold">MOUVEMENT:</p>
@@ -362,9 +645,17 @@ export default function ScriptEditor() {
         </TabsContent>
       </Tabs>
 
-      <AddItemDialog open={isAddItemOpen} onOpenChange={setIsAddItemOpen} onAdd={handleAddItem} characters={characters} />
+      <AddItemDialog open={isAddItemDialogOpen} onOpenChange={setIsAddItemDialogOpen} onAdd={handleAddItem} characters={characters} />
 
-      <CharactersDialog open={isCharactersOpen} onOpenChange={setIsCharactersOpen} characters={characters} setCharacters={setCharacters} />
+      {isCharactersDialogOpen && (
+        <CharactersDialog
+          open={isCharactersDialogOpen}
+          onOpenChange={setIsCharactersDialogOpen}
+          characters={characters}
+          setCharacters={setCharacters}
+          scriptId={scriptId}
+        />
+      )}
     </div>
   );
 }

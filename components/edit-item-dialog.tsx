@@ -7,17 +7,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { Character, ScriptItemType } from "./script-editor";
+import { Character, ScriptItemType } from "./script-editor";
 
-interface EditItemDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  item: ScriptItemType;
-  characters: Character[];
-  onUpdate: (item: ScriptItemType) => void;
-}
+const EditItemDialogProps = {
+  open: false,
+  onOpenChange: (open: boolean) => {},
+  item: {} as typeof ScriptItemType & {
+    id: string;
+    type: "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement";
+  },
+  characters: [] as Array<typeof Character & {
+    id: string;
+    realName: string;
+    stageName: string;
+    role: string;
+    color: string;
+  }>,
+  onUpdate: (item: typeof ScriptItemType) => {}
+};
 
-export default function EditItemDialog({ open, onOpenChange, item, characters, onUpdate }: EditItemDialogProps) {
+export default function EditItemDialog({ open, onOpenChange, item, characters, onUpdate }: typeof EditItemDialogProps) {
   const [itemType, setItemType] = useState<"dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement">(item.type);
   const [character, setCharacter] = useState<string>(item.character || "");
   const [text, setText] = useState<string>(item.text || "");
@@ -31,7 +40,7 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
   const [stagingItem, setStagingItem] = useState<string>(item.staging?.item || "");
   const [stagingPosition, setStagingPosition] = useState<string>(item.staging?.position || "");
   const [stagingDescription, setStagingDescription] = useState<string>(item.staging?.description || "");
-  const [movementCharacter, setMovementCharacter] = useState<string>(item.movement?.character || "");
+  const [movementCharacter, setMovementCharacter] = useState<string>(item.movement?.characterId || "");
   const [movementFrom, setMovementFrom] = useState<string>(item.movement?.from || "");
   const [movementTo, setMovementTo] = useState<string>(item.movement?.to || "");
   const [movementDescription, setMovementDescription] = useState<string>(item.movement?.description || "");
@@ -53,7 +62,7 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
     setStagingItem(item.staging?.item || "");
     setStagingPosition(item.staging?.position || "");
     setStagingDescription(item.staging?.description || "");
-    setMovementCharacter(item.movement?.character || "");
+    setMovementCharacter(item.movement?.characterId || "");
     setMovementFrom(item.movement?.from || "");
     setMovementTo(item.movement?.to || "");
     setMovementDescription(item.movement?.description || "");
@@ -63,7 +72,7 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
    * Handle form submission and update existing script item
    */
   const handleSubmit = () => {
-    const updatedItem: ScriptItemType = {
+    const updatedItem: typeof ScriptItemType = {
       ...item,
       type: itemType,
     };
@@ -115,7 +124,7 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
         break;
       case "movement":
         updatedItem.movement = {
-          character: movementCharacter,
+          characterId: movementCharacter,
           from: movementFrom,
           to: movementTo,
           description: movementDescription,

@@ -7,16 +7,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { Character, ScriptItemType } from "./script-editor";
+import { Character, ScriptItemType } from "./script-editor";
 
-interface AddItemDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onAdd: (item: ScriptItemType) => void;
-  characters: Character[];
-}
+const AddItemDialogProps = {
+  open: false,
+  onOpenChange: (open: boolean) => {},
+  onAdd: (item: typeof ScriptItemType) => {},
+  characters: [] as Array<typeof Character & {
+    id: string;
+    realName: string;
+    stageName: string;
+    role: string;
+    color: string;
+  }>
+};
 
-export default function AddItemDialog({ open, onOpenChange, onAdd, characters }: AddItemDialogProps) {
+export default function AddItemDialog({ open, onOpenChange, onAdd, characters }: typeof AddItemDialogProps) {
   const [itemType, setItemType] = useState<"dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement">("dialogue");
   const [character, setCharacter] = useState<string>("");
   const [text, setText] = useState<string>("");
@@ -62,58 +68,40 @@ export default function AddItemDialog({ open, onOpenChange, onAdd, characters }:
    * Handle form submission and create new script item
    */
   const handleSubmit = () => {
-    const newItem: ScriptItemType = {
+    const newItem: typeof ScriptItemType = {
       id: Date.now().toString(),
       type: itemType,
+      character: character || undefined,
+      text: text || undefined,
+      lighting: itemType === "lighting" ? {
+        position: lightPosition,
+        color: lightColor
+      } : undefined,
+      sound: itemType === "sound" ? {
+        url: soundUrl,
+        timecode: soundTimecode,
+        description: soundDescription
+      } : undefined,
+      image: itemType === "image" ? {
+        url: imageUrl,
+        caption: imageCaption
+      } : undefined,
+      staging: itemType === "staging" ? {
+        item: stagingItem,
+        position: stagingPosition,
+        description: stagingDescription
+      } : undefined,
+      movement: itemType === "movement" ? {
+        characterId: movementCharacter,
+        from: movementFrom,
+        to: movementTo,
+        description: movementDescription
+      } : undefined
     };
-
-    switch (itemType) {
-      case "dialogue":
-        newItem.character = character;
-        newItem.text = text;
-        break;
-      case "narration":
-        newItem.character = character; // Allow narration to have a character
-        newItem.text = text;
-        break;
-      case "lighting":
-        newItem.lighting = {
-          position: lightPosition,
-          color: lightColor,
-        };
-        break;
-      case "sound":
-        newItem.sound = {
-          url: soundUrl,
-          timecode: soundTimecode,
-          description: soundDescription,
-        };
-        break;
-      case "image":
-        newItem.image = {
-          url: imageUrl,
-          caption: imageCaption,
-        };
-        break;
-      case "staging":
-        newItem.staging = {
-          item: stagingItem,
-          position: stagingPosition,
-          description: stagingDescription,
-        };
-        break;
-      case "movement":
-        newItem.movement = {
-          character: movementCharacter,
-          from: movementFrom,
-          to: movementTo,
-          description: movementDescription,
-        };
-        break;
-    }
 
     onAdd(newItem);
     resetForm();
+    onOpenChange(false);
   };
 
   /**

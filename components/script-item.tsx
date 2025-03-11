@@ -9,16 +9,25 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import AddItemDialog from "./add-item-dialog";
 import EditItemDialog from "./edit-item-dialog";
-import type { Character, ScriptItemType } from "./script-editor";
+import { Character, ScriptItemType } from "./script-editor";
 
 interface ScriptItemProps {
-  item: ScriptItemType;
-  characters: Character[];
+  item: typeof ScriptItemType & {
+    id: string;
+    type: "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement";
+  };
+  characters: Array<typeof Character & {
+    id: string;
+    realName: string;
+    stageName: string;
+    role: string;
+    color: string;
+  }>;
   characterColor?: string;
-  onUpdate: (item: ScriptItemType) => void;
+  onUpdate: (item: typeof ScriptItemType) => void;
   onDelete: (id: string) => void;
-  onAddBefore: (item: ScriptItemType) => void;
-  onAddAfter: (item: ScriptItemType) => void;
+  onAddBefore: (item: typeof ScriptItemType) => void;
+  onAddAfter: (item: typeof ScriptItemType) => void;
   isSelected: boolean;
   onSelect: (isSelected: boolean) => void;
 }
@@ -51,11 +60,10 @@ export default function ScriptItem({
   const getItemLabel = () => {
     switch (item.type) {
       case "dialogue":
-        const character = characters.find((c) => c.id === item.character);
-        return `Dialogue: ${character?.stageName || "Inconnu"}`;
+        const character = characters.find((c: typeof Character) => c.id === item.character);
+        return `Dialogue - ${character?.stageName || "Personnage inconnu"}`;
       case "narration":
-        const narrator = item.character ? characters.find((c) => c.id === item.character) : null;
-        return narrator ? `Narration: ${narrator.stageName}` : "Narration";
+        return "Narration";
       case "lighting":
         return "Éclairage";
       case "sound":
@@ -63,12 +71,12 @@ export default function ScriptItem({
       case "image":
         return "Image";
       case "staging":
-        return `Mise en scène: ${item.staging?.item || "Élément"}`;
+        return "Mise en scène";
       case "movement":
-        const movingCharacter = characters.find((c) => c.id === item.movement?.character);
-        return `Mouvement: ${movingCharacter?.stageName || "Personnage"}`;
+        const movementCharacter = characters.find((c: typeof Character) => c.id === item.movement?.characterId);
+        return `Mouvement - ${movementCharacter?.stageName || "Personnage inconnu"}`;
       default:
-        return "Élément";
+        return "Élément inconnu";
     }
   };
 
