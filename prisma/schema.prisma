@@ -52,6 +52,7 @@ model Lighting {
   id         String     @id @default(cuid())
   position   String
   color      String
+  isOff      Boolean    @default(false)
   scriptItem ScriptItem @relation(fields: [scriptItemId], references: [id], onDelete: Cascade)
   scriptItemId String   @unique
 }
@@ -61,6 +62,7 @@ model Sound {
   url         String
   timecode    String
   description String?
+  isStop      Boolean    @default(false)
   scriptItem  ScriptItem @relation(fields: [scriptItemId], references: [id], onDelete: Cascade)
   scriptItemId String    @unique
 }

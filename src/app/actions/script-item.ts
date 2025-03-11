@@ -8,12 +8,14 @@ import { prisma } from "@/lib/prisma";
 const lightingSchema = z.object({
   position: z.string(),
   color: z.string(),
+  isOff: z.boolean().optional().default(false),
 });
 
 const soundSchema = z.object({
   url: z.string(),
   timecode: z.string(),
   description: z.string().optional(),
+  isStop: z.boolean().optional().default(false),
 });
 
 const imageSchema = z.object({

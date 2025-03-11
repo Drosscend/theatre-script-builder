@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import AddItemDialog from "./add-item-dialog";
 import EditItemDialog from "./edit-item-dialog";
-import { Character, ScriptItemType } from "./script-editor";
+import { Character, ScriptItemType } from "../components/script-editor";
 
 interface ScriptItemProps {
   item: typeof ScriptItemType & {
@@ -32,6 +32,17 @@ interface ScriptItemProps {
   onAddAfter: (item: typeof ScriptItemType) => void;
   isSelected: boolean;
   onSelect: (isSelected: boolean) => void;
+  existingLightings: Array<{
+    id: string;
+    position: string;
+    color: string;
+  }>;
+  existingSounds: Array<{
+    id: string;
+    url: string;
+    timecode: string;
+    description?: string;
+  }>;
 }
 
 export default function ScriptItem({
@@ -44,6 +55,8 @@ export default function ScriptItem({
   onAddAfter,
   isSelected,
   onSelect,
+  existingLightings = [],
+  existingSounds = [],
 }: ScriptItemProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAddBeforeOpen, setIsAddBeforeOpen] = useState(false);
@@ -62,7 +75,7 @@ export default function ScriptItem({
   const getItemLabel = () => {
     switch (item.type) {
       case "dialogue":
-        const character = characters.find((c: typeof Character) => c.id === item.character);
+        const character = item.character ? characters.find((c) => c.id === item.character) : undefined;
         return `Dialogue - ${character?.stageName || "Personnage inconnu"}`;
       case "narration":
         return "Narration";
@@ -75,7 +88,9 @@ export default function ScriptItem({
       case "staging":
         return "Mise en scène";
       case "movement":
-        const movementCharacter = characters.find((c: typeof Character) => c.id === item.movement?.characterId);
+        const movementCharacter = item.movement?.characterId 
+          ? characters.find((c) => c.id === item.movement?.characterId) 
+          : undefined;
         return `Mouvement - ${movementCharacter?.stageName || "Personnage inconnu"}`;
       default:
         return "Élément inconnu";
@@ -88,19 +103,26 @@ export default function ScriptItem({
   const getItemPreview = () => {
     switch (item.type) {
       case "dialogue":
-        return item.text;
+        return item.text || "";
       case "narration":
-        return item.text;
+        return item.text || "";
       case "lighting":
-        return `Position: ${item.lighting?.position}, Couleur: ${item.lighting?.color}`;
+        if (!item.lighting) return "Informations d'éclairage non disponibles";
+        if (item.lighting.isOff) return `Extinction des lumières à ${item.lighting.position || ""}`;
+        return `Position: ${item.lighting.position || ""}, Couleur: ${item.lighting.color || ""}`;
       case "sound":
-        return `${item.sound?.description} (${item.sound?.timecode})`;
+        if (!item.sound) return "Informations sonores non disponibles";
+        if (item.sound.isStop) return `Arrêt de la musique: ${item.sound.description || ""}`;
+        return `${item.sound.description || ""} (${item.sound.timecode || ""})`;
       case "image":
-        return item.image?.caption || item.image?.url;
+        if (!item.image) return "Informations d'image non disponibles";
+        return item.image.caption || item.image.url || "";
       case "staging":
-        return `${item.staging?.item} - Position: ${item.staging?.position}`;
+        if (!item.staging) return "Informations de mise en scène non disponibles";
+        return `${item.staging.item || ""} - Position: ${item.staging.position || ""}`;
       case "movement":
-        return `${item.movement?.from} → ${item.movement?.to}`;
+        if (!item.movement) return "Informations de mouvement non disponibles";
+        return `${item.movement.from || ""} → ${item.movement.to || ""}`;
       default:
         return "";
     }
@@ -147,9 +169,9 @@ export default function ScriptItem({
         }}
         className="shadow-sm hover:shadow transition-shadow"
       >
-        <CardContent className="p-4 flex items-start gap-2">
-          <div className="flex items-center gap-2">
-            <Checkbox checked={props.isSelected} onCheckedChange={props.onSelect} className="mt-1" />
+        <CardContent className="px-4 flex items-start gap-2">
+          <div className="flex items-center gap-0.5  mt-1">
+            <Checkbox checked={props.isSelected} onCheckedChange={props.onSelect} />
             <div className="cursor-move touch-none p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800" {...attributes} {...listeners}>
               <GripVerticalIcon className="size-5 text-muted-foreground" />
             </div>
@@ -160,7 +182,7 @@ export default function ScriptItem({
             <div className="text-sm text-muted-foreground truncate">{getItemPreview()}</div>
           </div>
 
-          <div className="flex gap-1 shrink-0">
+          <div className="flex shrink-0">
             <Button variant="ghost" size="icon" title="Ajouter avant" onClick={() => setIsAddBeforeOpen(true)}>
               <DiffIcon />
             </Button>
@@ -177,11 +199,33 @@ export default function ScriptItem({
         </CardContent>
       </Card>
 
-      <EditItemDialog open={isEditOpen} onOpenChange={setIsEditOpen} item={item} characters={characters} onUpdate={onUpdate} />
+      <EditItemDialog
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        item={item}
+        characters={characters}
+        onUpdate={onUpdate}
+        existingLightings={existingLightings}
+        existingSounds={existingSounds}
+      />
 
-      <AddItemDialog open={isAddBeforeOpen} onOpenChange={setIsAddBeforeOpen} onAdd={onAddBefore} characters={characters} />
+      <AddItemDialog 
+        open={isAddBeforeOpen} 
+        onOpenChange={setIsAddBeforeOpen} 
+        onAdd={onAddBefore} 
+        characters={characters}
+        existingLightings={existingLightings}
+        existingSounds={existingSounds}
+      />
 
-      <AddItemDialog open={isAddAfterOpen} onOpenChange={setIsAddAfterOpen} onAdd={onAddAfter} characters={characters} />
+      <AddItemDialog 
+        open={isAddAfterOpen} 
+        onOpenChange={setIsAddAfterOpen} 
+        onAdd={onAddAfter} 
+        characters={characters}
+        existingLightings={existingLightings}
+        existingSounds={existingSounds}
+      />
     </>
   );
 }

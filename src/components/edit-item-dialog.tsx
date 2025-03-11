@@ -25,18 +25,43 @@ const EditItemDialogProps = {
       color: string;
     }
   >,
+  existingLightings: [] as Array<{
+    id: string;
+    position: string;
+    color: string;
+  }>,
+  existingSounds: [] as Array<{
+    id: string;
+    url: string;
+    timecode: string;
+    description?: string;
+  }>,
   onUpdate: (item: typeof ScriptItemType) => {},
 };
 
-export default function EditItemDialog({ open, onOpenChange, item, characters, onUpdate }: typeof EditItemDialogProps) {
+export default function EditItemDialog({ 
+  open, 
+  onOpenChange, 
+  item, 
+  characters, 
+  existingLightings = [],
+  existingSounds = [],
+  onUpdate 
+}: typeof EditItemDialogProps) {
   const [itemType, setItemType] = useState<"dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement">(item.type);
   const [character, setCharacter] = useState<string>(item.character || "");
   const [text, setText] = useState<string>(item.text || "");
   const [lightPosition, setLightPosition] = useState<string>(item.lighting?.position || "");
   const [lightColor, setLightColor] = useState<string>(item.lighting?.color || "#ffffff");
+  const [lightIsOff, setLightIsOff] = useState<boolean>(item.lighting?.isOff || false);
+  const [selectedLighting, setSelectedLighting] = useState<string>("");
+  const [useExistingLighting, setUseExistingLighting] = useState<boolean>(false);
   const [soundUrl, setSoundUrl] = useState<string>(item.sound?.url || "");
   const [soundTimecode, setSoundTimecode] = useState<string>(item.sound?.timecode || "");
   const [soundDescription, setSoundDescription] = useState<string>(item.sound?.description || "");
+  const [soundIsStop, setSoundIsStop] = useState<boolean>(item.sound?.isStop || false);
+  const [selectedSound, setSelectedSound] = useState<string>("");
+  const [useExistingSound, setUseExistingSound] = useState<boolean>(false);
   const [imageUrl, setImageUrl] = useState<string>(item.image?.url || "");
   const [imageCaption, setImageCaption] = useState<string>(item.image?.caption || "");
   const [stagingItem, setStagingItem] = useState<string>(item.staging?.item || "");
@@ -56,9 +81,15 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
     setText(item.text || "");
     setLightPosition(item.lighting?.position || "");
     setLightColor(item.lighting?.color || "#ffffff");
+    setLightIsOff(item.lighting?.isOff || false);
+    setSelectedLighting("");
+    setUseExistingLighting(false);
     setSoundUrl(item.sound?.url || "");
     setSoundTimecode(item.sound?.timecode || "");
     setSoundDescription(item.sound?.description || "");
+    setSoundIsStop(item.sound?.isStop || false);
+    setSelectedSound("");
+    setUseExistingSound(false);
     setImageUrl(item.image?.url || "");
     setImageCaption(item.image?.caption || "");
     setStagingItem(item.staging?.item || "");
@@ -69,6 +100,31 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
     setMovementTo(item.movement?.to || "");
     setMovementDescription(item.movement?.description || "");
   }, [item]);
+
+  /**
+   * Handle selection of existing lighting
+   */
+  const handleSelectLighting = (id: string) => {
+    const lighting = existingLightings.find(l => l.id === id);
+    if (lighting) {
+      setLightPosition(lighting.position);
+      setLightColor(lighting.color);
+    }
+    setSelectedLighting(id);
+  };
+
+  /**
+   * Handle selection of existing sound
+   */
+  const handleSelectSound = (id: string) => {
+    const sound = existingSounds.find(s => s.id === id);
+    if (sound) {
+      setSoundUrl(sound.url);
+      setSoundTimecode(sound.timecode);
+      setSoundDescription(sound.description || "");
+    }
+    setSelectedSound(id);
+  };
 
   /**
    * Handle form submission and update existing script item
@@ -102,6 +158,7 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
         updatedItem.lighting = {
           position: lightPosition,
           color: lightColor,
+          isOff: lightIsOff,
         };
         break;
       case "sound":
@@ -109,6 +166,7 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
           url: soundUrl,
           timecode: soundTimecode,
           description: soundDescription,
+          isStop: soundIsStop,
         };
         break;
       case "image":
@@ -237,26 +295,66 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
           {itemType === "lighting" && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="edit-light-position">{`Position de l'éclairage`}</Label>
+                <Label htmlFor="selected-lighting">Éclairage existant</Label>
+                <Select value={selectedLighting} onValueChange={handleSelectLighting}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un éclairage existant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {existingLightings.map((lighting) => (
+                      <SelectItem key={lighting.id} value={lighting.id}>
+                        {lighting.position} - {lighting.color}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="use-existing-lighting"
+                  checked={useExistingLighting}
+                  onChange={(e) => setUseExistingLighting(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <Label htmlFor="use-existing-lighting">Utiliser l'éclairage existant</Label>
+              </div>
+              <div className="grid w-full items-center gap-1.5">
+                <Label htmlFor="lightPosition">Position</Label>
                 <Input
-                  id="edit-light-position"
+                  id="lightPosition"
+                  placeholder="Position de l'éclairage (scène, côté jardin, etc.)"
                   value={lightPosition}
                   onChange={(e) => setLightPosition(e.target.value)}
-                  placeholder="ex: Centre scène, Côté jardin, etc."
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-light-color">Couleur</Label>
+              <div className="grid w-full items-center gap-1.5">
+                <Label htmlFor="lightColor">Couleur</Label>
                 <div className="flex gap-2">
                   <Input
-                    id="edit-light-color"
+                    id="lightColor"
                     type="color"
                     value={lightColor}
                     onChange={(e) => setLightColor(e.target.value)}
-                    className="w-12 h-10 p-1"
+                    className="w-16 h-10"
                   />
-                  <Input value={lightColor} onChange={(e) => setLightColor(e.target.value)} placeholder="#FFFFFF" className="flex-1" />
+                  <Input
+                    value={lightColor}
+                    onChange={(e) => setLightColor(e.target.value)}
+                    className="flex-1"
+                    placeholder="#FFFFFF"
+                  />
                 </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="lightIsOff"
+                  checked={lightIsOff}
+                  onChange={(e) => setLightIsOff(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <Label htmlFor="lightIsOff">Éteindre la lumière</Label>
               </div>
             </>
           )}
@@ -264,31 +362,66 @@ export default function EditItemDialog({ open, onOpenChange, item, characters, o
           {itemType === "sound" && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="edit-sound-url">URL du son</Label>
+                <Label htmlFor="selected-sound">Son existant</Label>
+                <Select value={selectedSound} onValueChange={handleSelectSound}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un son existant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {existingSounds.map((sound) => (
+                      <SelectItem key={sound.id} value={sound.id}>
+                        {sound.url}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="use-existing-sound"
+                  checked={useExistingSound}
+                  onChange={(e) => setUseExistingSound(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <Label htmlFor="use-existing-sound">Utiliser le son existant</Label>
+              </div>
+              <div className="grid w-full items-center gap-1.5">
+                <Label htmlFor="soundUrl">URL du son</Label>
                 <Input
-                  id="edit-sound-url"
+                  id="soundUrl"
+                  placeholder="URL du fichier audio"
                   value={soundUrl}
                   onChange={(e) => setSoundUrl(e.target.value)}
-                  placeholder="https://example.com/sound.mp3"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-sound-timecode">Timecode</Label>
+              <div className="grid w-full items-center gap-1.5">
+                <Label htmlFor="soundTimecode">Timecode</Label>
                 <Input
-                  id="edit-sound-timecode"
+                  id="soundTimecode"
+                  placeholder="Timecode (ex: 00:01:30)"
                   value={soundTimecode}
                   onChange={(e) => setSoundTimecode(e.target.value)}
-                  placeholder="ex: 00:15 ou 1m30s"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-sound-description">Description</Label>
+              <div className="grid w-full items-center gap-1.5">
+                <Label htmlFor="soundDescription">Description</Label>
                 <Input
-                  id="edit-sound-description"
+                  id="soundDescription"
+                  placeholder="Description du son"
                   value={soundDescription}
                   onChange={(e) => setSoundDescription(e.target.value)}
-                  placeholder="ex: Bruit de tonnerre"
                 />
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="soundIsStop"
+                  checked={soundIsStop}
+                  onChange={(e) => setSoundIsStop(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <Label htmlFor="soundIsStop">Arrêter la musique</Label>
               </div>
             </>
           )}

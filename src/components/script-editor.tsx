@@ -28,12 +28,14 @@ export const Character = {
 export const LightingEffect = {
   position: "",
   color: "",
+  isOff: false,
 };
 
 export const SoundEffect = {
   url: "",
   timecode: "",
   description: "",
+  isStop: false,
 };
 
 export const ScriptItemType = {
@@ -111,6 +113,33 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
 
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
 
+  /**
+   * Récupérer les éléments d'éclairage existants
+   */
+  const getExistingLightings = () => {
+    return script
+      .filter(item => item.type === "lighting" && item.lighting && !item.lighting.isOff)
+      .map(item => ({
+        id: item.id,
+        position: item.lighting?.position || "",
+        color: item.lighting?.color || "",
+      }));
+  };
+
+  /**
+   * Récupérer les éléments sonores existants
+   */
+  const getExistingSounds = () => {
+    return script
+      .filter(item => item.type === "sound" && item.sound && !item.sound.isStop)
+      .map(item => ({
+        id: item.id,
+        url: item.sound?.url || "",
+        timecode: item.sound?.timecode || "",
+        description: item.sound?.description || "",
+      }));
+  };
+
   const handleAddItem = async (item: typeof ScriptItemType) => {
     try {
       const result = await createScriptItem(scriptId, {
@@ -138,13 +167,14 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
           type: string;
           characterId?: string;
           text?: string;
-          lighting?: { position: string; color: string };
-          sound?: { url: string; timecode: string; description?: string };
+          lighting?: { position: string; color: string; isOff?: boolean };
+          sound?: { url: string; timecode: string; description?: string; isStop?: boolean };
           image?: { url: string; caption?: string };
           staging?: { item: string; position: string; description?: string };
           movement?: { characterId: string; from: string; to: string; description?: string };
         };
-        const newItem: typeof ScriptItemType = {
+
+        const newItem = {
           id: data.id,
           type: data.type as "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement",
           character: data.characterId || undefined,
@@ -153,6 +183,7 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
             ? {
                 position: data.lighting.position,
                 color: data.lighting.color,
+                isOff: data.lighting.isOff || false,
               }
             : undefined,
           sound: data.sound
@@ -160,19 +191,20 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
                 url: data.sound.url,
                 timecode: data.sound.timecode,
                 description: data.sound.description || "",
+                isStop: data.sound.isStop || false,
               }
             : undefined,
           image: data.image
             ? {
                 url: data.image.url,
-                caption: data.image.caption,
+                caption: data.image.caption || "",
               }
             : undefined,
           staging: data.staging
             ? {
                 item: data.staging.item,
                 position: data.staging.position,
-                description: data.staging.description,
+                description: data.staging.description || "",
               }
             : undefined,
           movement: data.movement
@@ -180,17 +212,19 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
                 characterId: data.movement.characterId,
                 from: data.movement.from,
                 to: data.movement.to,
-                description: data.movement.description,
+                description: data.movement.description || "",
               }
             : undefined,
         };
 
-        setScript([...script, newItem]);
+        setScript(prevScript => [...prevScript, newItem]);
+        
         toast("Élément ajouté", {
           description: "L'élément a été ajouté avec succès",
         });
       }
     } catch (error) {
+      console.error("Erreur lors de l'ajout d'un item:", error);
       toast.error("Erreur", {
         description: "Une erreur est survenue lors de l'ajout de l'élément",
       });
@@ -235,13 +269,14 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
           type: string;
           characterId?: string;
           text?: string;
-          lighting?: { position: string; color: string };
-          sound?: { url: string; timecode: string; description?: string };
+          lighting?: { position: string; color: string; isOff?: boolean };
+          sound?: { url: string; timecode: string; description?: string; isStop?: boolean };
           image?: { url: string; caption?: string };
           staging?: { item: string; position: string; description?: string };
           movement?: { characterId: string; from: string; to: string; description?: string };
         };
-        const newItem: typeof ScriptItemType = {
+        
+        const newItem = {
           id: data.id,
           type: data.type as "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement",
           character: data.characterId || undefined,
@@ -250,6 +285,7 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
             ? {
                 position: data.lighting.position,
                 color: data.lighting.color,
+                isOff: data.lighting.isOff || false,
               }
             : undefined,
           sound: data.sound
@@ -257,19 +293,20 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
                 url: data.sound.url,
                 timecode: data.sound.timecode,
                 description: data.sound.description || "",
+                isStop: data.sound.isStop || false,
               }
             : undefined,
           image: data.image
             ? {
                 url: data.image.url,
-                caption: data.image.caption,
+                caption: data.image.caption || "",
               }
             : undefined,
           staging: data.staging
             ? {
                 item: data.staging.item,
                 position: data.staging.position,
-                description: data.staging.description,
+                description: data.staging.description || "",
               }
             : undefined,
           movement: data.movement
@@ -277,14 +314,16 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
                 characterId: data.movement.characterId,
                 from: data.movement.from,
                 to: data.movement.to,
-                description: data.movement.description,
+                description: data.movement.description || "",
               }
             : undefined,
         };
 
-        const newItems = [...script];
-        newItems.splice(newIndex, 0, newItem);
-        setScript(newItems);
+        setScript(prevScript => {
+          const newScript = [...prevScript];
+          newScript.splice(position === "after" ? targetIndex + 1 : targetIndex, 0, newItem);
+          return newScript;
+        });
 
         toast("Élément ajouté", {
           description: "L'élément a été ajouté avec succès",
@@ -497,8 +536,8 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
                 type: string;
                 characterId?: string;
                 text?: string;
-                lighting?: { position: string; color: string };
-                sound?: { url: string; timecode: string; description?: string };
+                lighting?: { position: string; color: string; isOff?: boolean };
+                sound?: { url: string; timecode: string; description?: string; isStop?: boolean };
                 image?: { url: string; caption?: string };
                 staging?: { item: string; position: string; description?: string };
                 movement?: { characterId: string; from: string; to: string; description?: string };
@@ -512,6 +551,7 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
                   ? {
                       position: data.lighting.position,
                       color: data.lighting.color,
+                      isOff: data.lighting.isOff || false,
                     }
                   : undefined,
                 sound: data.sound
@@ -519,6 +559,7 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
                       url: data.sound.url,
                       timecode: data.sound.timecode,
                       description: data.sound.description || "",
+                      isStop: data.sound.isStop || false,
                     }
                   : undefined,
                 image: data.image
@@ -632,13 +673,15 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
                         key={item.id}
                         item={item}
                         characters={characters}
-                        characterColor={item.character ? getCharacterColor(item.character) : undefined}
+                        characterColor={getCharacterColor(item.character || "")}
                         onUpdate={handleUpdateItem}
                         onDelete={handleDeleteItem}
                         onAddBefore={(newItem) => handleAddItemAtPosition(newItem, item.id, "before")}
                         onAddAfter={(newItem) => handleAddItemAtPosition(newItem, item.id, "after")}
                         isSelected={selectedItems.includes(item.id)}
                         onSelect={(isSelected) => handleSelectItem(item.id, isSelected)}
+                        existingLightings={getExistingLightings()}
+                        existingSounds={getExistingSounds()}
                       />
                     ))
                   )}
@@ -741,7 +784,14 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
         </TabsContent>
       </Tabs>
 
-      <AddItemDialog open={isAddItemDialogOpen} onOpenChange={setIsAddItemDialogOpen} onAdd={handleAddItem} characters={characters} />
+      <AddItemDialog
+        open={isAddItemDialogOpen}
+        onOpenChange={setIsAddItemDialogOpen}
+        onAdd={handleAddItem}
+        characters={characters}
+        existingLightings={getExistingLightings()}
+        existingSounds={getExistingSounds()}
+      />
 
       {isCharactersDialogOpen && (
         <CharactersDialog
