@@ -75,17 +75,26 @@ export function ScriptPreview({ script, characters }: typeof ScriptPreviewProps)
       <Card className="p-6">
         <h2 className="text-xl font-semibold mb-4">Aperçu du script</h2>
         <div className="prose max-w-none">
-          {script.map((item) => {
+          {script.map((item, index) => {
             const character = item.character ? characters.find((c) => c.id === item.character) : null;
+            const lineNumber = (
+              <div className="text-sm text-gray-400 w-8 flex-shrink-0 select-none">
+                {(index + 1).toString().padStart(2, '0')}
+              </div>
+            );
+
             if (item.type === "dialogue" && character) {
               const processedText = item.text;
 
               return (
-                <div key={item.id} className="mb-4">
-                  <p className="font-bold" style={{ color: character.color }}>
-                    {`${character.stageName}:`}
-                  </p>
-                  <p className="ml-8">{processedText}</p>
+                <div key={item.id} className="mb-4 flex">
+                  {lineNumber}
+                  <div className="flex-1">
+                    <p className="font-bold" style={{ color: character.color }}>
+                      {`${character.stageName}:`}
+                    </p>
+                    <p className="ml-8">{processedText}</p>
+                  </div>
                 </div>
               );
             } else if (item.type === "narration") {
@@ -98,61 +107,79 @@ export function ScriptPreview({ script, characters }: typeof ScriptPreviewProps)
               ) : null;
 
               return (
-                <div key={item.id} className="mb-4 italic">
-                  {narratorPrefix}
-                  <p>{processedText}</p>
+                <div key={item.id} className="mb-4 flex">
+                  {lineNumber}
+                  <div className="flex-1 italic">
+                    {narratorPrefix}
+                    <p>{processedText}</p>
+                  </div>
                 </div>
               );
             } else if (item.type === "lighting" && item.lighting) {
               return (
-                <div key={item.id} className="mb-4 p-2 bg-slate-100 dark:bg-slate-800 rounded">
-                  <p className="text-sm font-semibold">LUMIÈRE:</p>
-                  <p className="text-sm">
-                    Position: {`${item.lighting.position}`}, Couleur:{" "}
-                    <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: item.lighting.color }}></span>{" "}
-                    {`${item.lighting.color}`}
-                  </p>
+                <div key={item.id} className="mb-4 flex">
+                  {lineNumber}
+                  <div className="flex-1 p-2 bg-slate-100 dark:bg-slate-800 rounded">
+                    <p className="text-sm font-semibold">LUMIÈRE:</p>
+                    <p className="text-sm">
+                      Position: {`${item.lighting.position}`}, Couleur:{" "}
+                      <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: item.lighting.color }}></span>{" "}
+                      {`${item.lighting.color}`}
+                    </p>
+                  </div>
                 </div>
               );
             } else if (item.type === "sound" && item.sound) {
               return (
-                <div key={item.id} className="mb-4 p-2 bg-slate-100 dark:bg-slate-800 rounded">
-                  <p className="text-sm font-semibold">SON:</p>
-                  <p className="text-sm">
-                    {`${item.sound.description}`} ({`${item.sound.timecode}`})
-                  </p>
-                  <p className="text-xs text-blue-500 underline">{`${item.sound.url}`}</p>
+                <div key={item.id} className="mb-4 flex">
+                  {lineNumber}
+                  <div className="flex-1 p-2 bg-slate-100 dark:bg-slate-800 rounded">
+                    <p className="text-sm font-semibold">SON:</p>
+                    <p className="text-sm">
+                      {`${item.sound.description}`} ({`${item.sound.timecode}`})
+                    </p>
+                    <p className="text-xs text-blue-500 underline">{`${item.sound.url}`}</p>
+                  </div>
                 </div>
               );
             } else if (item.type === "image" && item.image) {
               return (
-                <div key={item.id} className="mb-4 p-2 bg-slate-100 dark:bg-slate-800 rounded">
-                  <p className="text-sm font-semibold">IMAGE:</p>
-                  <div className="my-2">
-                    <div className="h-20 w-full flex items-center justify-center border rounded bg-gray-100">
-                      <p className="text-gray-500">Image temporairement désactivée</p>
+                <div key={item.id} className="mb-4 flex">
+                  {lineNumber}
+                  <div className="flex-1 p-2 bg-slate-100 dark:bg-slate-800 rounded">
+                    <p className="text-sm font-semibold">IMAGE:</p>
+                    <div className="my-2">
+                      <div className="h-20 w-full flex items-center justify-center border rounded bg-gray-100">
+                        <p className="text-gray-500">Image temporairement désactivée</p>
+                      </div>
                     </div>
+                    {item.image.caption && <p className="text-sm text-center italic mt-1">{`${item.image.caption}`}</p>}
                   </div>
-                  {item.image.caption && <p className="text-sm text-center italic mt-1">{`${item.image.caption}`}</p>}
                 </div>
               );
             } else if (item.type === "staging" && item.staging) {
               return (
-                <div key={item.id} className="mb-4 p-2 bg-slate-100 dark:bg-slate-800 rounded">
-                  <p className="text-sm font-semibold">MISE EN SCÈNE - {`${item.staging.item}`}:</p>
-                  <p className="text-sm">Position: {`${item.staging.position}`}</p>
-                  {item.staging.description && <p className="text-sm italic mt-1">{`${item.staging.description}`}</p>}
+                <div key={item.id} className="mb-4 flex">
+                  {lineNumber}
+                  <div className="flex-1 p-2 bg-slate-100 dark:bg-slate-800 rounded">
+                    <p className="text-sm font-semibold">MISE EN SCÈNE - {`${item.staging.item}`}:</p>
+                    <p className="text-sm">Position: {`${item.staging.position}`}</p>
+                    {item.staging.description && <p className="text-sm italic mt-1">{`${item.staging.description}`}</p>}
+                  </div>
                 </div>
               );
             } else if (item.type === "movement" && item.movement) {
               const movingCharacter = characters.find((c) => c.id === item.movement?.characterId);
               return (
-                <div key={item.id} className="mb-4 p-2 bg-slate-100 dark:bg-slate-800 rounded">
-                  <p className="text-sm font-semibold">MOUVEMENT:</p>
-                  <p className="text-sm">
-                    {`${movingCharacter?.stageName || "Personnage"}`}: {`${item.movement.from}`} → {`${item.movement.to}`}
-                  </p>
-                  {item.movement.description && <p className="text-sm italic mt-1">{`${item.movement.description}`}</p>}
+                <div key={item.id} className="mb-4 flex">
+                  {lineNumber}
+                  <div className="flex-1 p-2 bg-slate-100 dark:bg-slate-800 rounded">
+                    <p className="text-sm font-semibold">MOUVEMENT:</p>
+                    <p className="text-sm">
+                      {`${movingCharacter?.stageName || "Personnage"}`}: {`${item.movement.from}`} → {`${item.movement.to}`}
+                    </p>
+                    {item.movement.description && <p className="text-sm italic mt-1">{`${item.movement.description}`}</p>}
+                  </div>
                 </div>
               );
             }

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeftIcon } from "lucide-react";
+import { ScriptPDFGenerator } from "@/components/script-pdf-generator";
 
 interface PageProps {
   params: Promise<{
@@ -109,12 +110,15 @@ export default async function ScriptPreviewPage({ params }: PageProps) {
               <CardTitle>{script.name}</CardTitle>
               {script.description && <CardDescription>{script.description}</CardDescription>}
             </div>
-            <Link href={`/scripts/${(await params).id}`} passHref>
-              <Button variant="outline">
-                <ArrowLeftIcon className="mr-2 h-4 w-4" />
-                Retour à l'éditeur
-              </Button>
-            </Link>
+            <div className="flex gap-2">
+              <ScriptPDFGenerator script={script.items} characters={script.characters} />
+              <Link href={`/scripts/${(await params).id}`} passHref>
+                <Button variant="outline">
+                  <ArrowLeftIcon />
+                  Retour à l'éditeur
+                </Button>
+              </Link>
+            </div>
           </CardHeader>
         </Card>
       </div>
