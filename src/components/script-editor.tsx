@@ -498,7 +498,7 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId, scrip
           </Button>
           <Link href={`/scripts/${scriptId}/apercu`} passHref>
             <Button variant="outline">
-              <EyeIcon className="mr-2 h-4 w-4" />
+              <EyeIcon />
               Aperçu
             </Button>
           </Link>

@@ -1,4 +1,8 @@
 import { Card } from "@/components/ui/card";
+import { Button } from "./ui/button";
+import Link from "next/link";
+import { ArrowLeftIcon } from "lucide-react";
+import { ScriptPDFGenerator } from "./script-pdf-generator";
 
 export const Character = {
   id: "",
@@ -67,11 +71,25 @@ export const ScriptPreviewProps = {
       color: string;
     }
   >,
+  scriptId: "",
+  scriptName: "",
 };
 
-export function ScriptPreview({ script, characters }: typeof ScriptPreviewProps) {
+export function ScriptPreview({ script, characters, scriptId, scriptName }: typeof ScriptPreviewProps) {
   return (
     <div className="container mx-auto py-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">{scriptName}</h1>
+        <div className="flex gap-2">  
+          <Link href={`/scripts/${scriptId}`} passHref>
+            <Button variant="outline">
+              <ArrowLeftIcon />
+              Retour à l'éditeur
+            </Button>
+          </Link>
+          <ScriptPDFGenerator script={script} characters={characters} />
+        </div>
+      </div>
       <Card className="p-6">
         <h2 className="text-xl font-semibold mb-4">Aperçu du script</h2>
         <div className="prose max-w-none">

@@ -1,11 +1,6 @@
 import { notFound } from "next/navigation";
 import { ScriptPreview } from "@/components/script-preview";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { ArrowLeftIcon } from "lucide-react";
-import { ScriptPDFGenerator } from "@/components/script-pdf-generator";
 
 interface PageProps {
   params: Promise<{
@@ -102,28 +97,8 @@ export default async function ScriptPreviewPage({ params }: PageProps) {
   const script = await getScript((await params).id);
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
-      <div className="flex justify-between items-center">
-        <Card className="w-full">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>{script.name}</CardTitle>
-              {script.description && <CardDescription>{script.description}</CardDescription>}
-            </div>
-            <div className="flex gap-2">
-              <ScriptPDFGenerator script={script.items} characters={script.characters} />
-              <Link href={`/scripts/${(await params).id}`} passHref>
-                <Button variant="outline">
-                  <ArrowLeftIcon />
-                  Retour à l'éditeur
-                </Button>
-              </Link>
-            </div>
-          </CardHeader>
-        </Card>
-      </div>
-
-      <ScriptPreview script={script.items} characters={script.characters} />
+    <div className="container mx-auto space-y-6">
+      <ScriptPreview script={script.items} characters={script.characters} scriptId={script.id} scriptName={script.name} />
     </div>
   );
 } 

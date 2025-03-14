@@ -1,8 +1,6 @@
 import { notFound } from "next/navigation";
 import { ScriptEditor } from "@/components/script-editor";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
-import { DeleteScriptButton } from "@/components/delete-script-button";
 
 interface PageProps {
   params: Promise<{
