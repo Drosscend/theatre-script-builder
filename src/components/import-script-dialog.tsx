@@ -13,7 +13,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { createCharacter } from "@/app/actions/character";
+import { createCharacter, deleteAllCharacters } from "@/app/actions/character";
 import { createScriptItem, deleteAllScriptItems } from "@/app/actions/script-item";
 
 interface ImportScriptDialogProps {
@@ -43,9 +43,9 @@ export function ImportScriptDialog({ open, onOpenChange, scriptId, onImportCompl
         const characterIdMap = new Map<string, string>();
 
         if (parsed.characters && Array.isArray(parsed.characters)) {
-          toast.loading("Suppression des éléments existants...", { id: idToast });
-          await deleteAllScriptItems(scriptId);
-          toast.success("Suppression des éléments existants terminée", { id: idToast });
+          toast.loading("Suppression des personnages existants...", { id: idToast });
+          await deleteAllCharacters(scriptId);
+          toast.success("Suppression des personnages existants terminée", { id: idToast });
 
           const createPromises = parsed.characters.map((char: any) => {
             const { id, ...charData } = char;
@@ -66,6 +66,10 @@ export function ImportScriptDialog({ open, onOpenChange, scriptId, onImportCompl
           
           toast.success("Création des personnages terminée", { id: idToast });
         }
+
+        toast.loading("Suppression des éléments existants...", { id: idToast });
+        await deleteAllScriptItems(scriptId);
+        toast.success("Suppression des éléments existants terminée", { id: idToast });
 
         if (parsed.script && Array.isArray(parsed.script)) {
           toast.loading("Création des éléments...", { id: idToast });

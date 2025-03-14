@@ -102,3 +102,9 @@ export async function deleteCharacter(id: string) {
     return { success: false, error: "Une erreur est survenue lors de la suppression du personnage" };
   }
 }
+
+export async function deleteAllCharacters(scriptId: string) {
+  await prisma.character.deleteMany({
+    where: { scriptId },
+  });
+}
