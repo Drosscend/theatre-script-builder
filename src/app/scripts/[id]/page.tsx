@@ -64,6 +64,9 @@ async function getScript(id: string) {
       transformedItem.image = {
         url: item.image.url,
         caption: item.image.caption,
+        width: item.image.width,
+        height: item.image.height,
+        type: item.image.type,
       };
     }
 

@@ -1,7 +1,6 @@
 "use client";
 
-import { createCharacter } from "@/app/actions/character";
-import { createScriptItem, deleteAllScriptItems, deleteScriptItem, reorderScriptItems, updateScriptItem } from "@/app/actions/script-item";
+import { createScriptItem, deleteScriptItem, reorderScriptItems, updateScriptItem } from "@/app/actions/script-item";
 import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
