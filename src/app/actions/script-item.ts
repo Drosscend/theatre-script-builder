@@ -143,6 +143,96 @@ export async function createScriptItem(scriptId: string, data: z.infer<typeof sc
   }
 }
 
+// Créer plusieurs éléments de script en une seule transaction
+export async function createBulkScriptItems(scriptId: string, items: z.infer<typeof scriptItemSchema>[]) {
+  try {
+    // Valider toutes les données avant de commencer la transaction
+    const validatedItems = items.map(item => scriptItemSchema.parse(item));
+
+    // Créer tous les éléments dans une seule transaction
+    const results = await prisma.$transaction(async (tx) => {
+      const createdItems = [];
+
+      for (let i = 0; i < validatedItems.length; i++) {
+        const validatedData = validatedItems[i];
+        
+        // Créer l'élément de base
+        const scriptItem = await tx.scriptItem.create({
+          data: {
+            type: validatedData.type,
+            text: validatedData.text,
+            characterId: validatedData.characterId,
+            position: i,
+            scriptId,
+          },
+        });
+
+        // Créer les relations spécifiques au type
+        if (validatedData.lighting && validatedData.type === "lighting") {
+          await tx.lighting.create({
+            data: {
+              ...validatedData.lighting,
+              scriptItemId: scriptItem.id,
+            },
+          });
+        }
+
+        if (validatedData.sound && validatedData.type === "sound") {
+          await tx.sound.create({
+            data: {
+              ...validatedData.sound,
+              scriptItemId: scriptItem.id,
+            },
+          });
+        }
+
+        if (validatedData.image && validatedData.type === "image") {
+          await tx.image.create({
+            data: {
+              ...validatedData.image,
+              scriptItemId: scriptItem.id,
+            },
+          });
+        }
+
+        if (validatedData.staging && validatedData.type === "staging") {
+          await tx.staging.create({
+            data: {
+              ...validatedData.staging,
+              scriptItemId: scriptItem.id,
+            },
+          });
+        }
+
+        if (validatedData.movement && validatedData.type === "movement") {
+          await tx.movement.create({
+            data: {
+              from: validatedData.movement.from,
+              to: validatedData.movement.to,
+              description: validatedData.movement.description,
+              characterId: validatedData.movement.characterId,
+              scriptItemId: scriptItem.id,
+            },
+          });
+        }
+
+        createdItems.push(scriptItem);
+      }
+
+      return createdItems;
+    });
+
+    revalidatePath(`/scripts/${scriptId}`);
+    revalidatePath(`/scripts/${scriptId}/apercu`);
+    return { success: true, data: results };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.errors };
+    }
+    return { success: false, error: "Une erreur est survenue lors de la création des éléments" };
+  }
+}
+
 // Mettre à jour un élément de script
 export async function updateScriptItem(id: string, data: z.infer<typeof scriptItemSchema>) {
   try {

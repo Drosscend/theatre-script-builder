@@ -58,7 +58,7 @@ export function DeleteScriptButton({ scriptId, scriptName }: DeleteScriptButtonP
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
         <Button variant="destructive" size="sm">
-          <Trash2 className="mr-2 h-4 w-4" />
+          <Trash2 />
           Supprimer
         </Button>
       </AlertDialogTrigger>

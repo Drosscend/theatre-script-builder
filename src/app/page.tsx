@@ -14,7 +14,7 @@ export default async function HomePage() {
         <h1 className="text-3xl font-bold">{`Constructeur de Scripts de Théâtre`}</h1>
         <Link href="/scripts/new">
           <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
+            <PlusCircle />
             Nouveau Script
           </Button>
         </Link>
@@ -30,7 +30,7 @@ export default async function HomePage() {
             <CardFooter>
               <Link href="/scripts/new">
                 <Button>
-                  <PlusCircle className="mr-2 h-4 w-4" />
+                  <PlusCircle />
                   Créer un script
                 </Button>
               </Link>

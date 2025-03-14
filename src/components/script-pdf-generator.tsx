@@ -304,7 +304,7 @@ export const ScriptPDFGenerator = memo(function ScriptPDFGenerator({ script, cha
           onClick={() => setIsDialogOpen(true)}
           disabled={isGenerating}
         >
-          <FileTextIcon className="mr-2 h-4 w-4" />
+          <FileTextIcon />
           {isGenerating ? "Génération..." : "Générer PDF"}
         </Button>
       </DialogTrigger>

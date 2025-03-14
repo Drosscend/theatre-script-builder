@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { createCharacter, deleteAllCharacters } from "@/app/actions/character";
-import { createScriptItem, deleteAllScriptItems } from "@/app/actions/script-item";
+import { createBulkScriptItems, deleteAllScriptItems } from "@/app/actions/script-item";
 
 interface ImportScriptDialogProps {
   open: boolean;
@@ -73,15 +73,13 @@ export function ImportScriptDialog({ open, onOpenChange, scriptId, onImportCompl
 
         if (parsed.script && Array.isArray(parsed.script)) {
           toast.loading("Création des éléments...", { id: idToast });
-          for (let i = 0; i < parsed.script.length; i++) {
-            const item = parsed.script[i];
-            
-            // Mettre à jour les references de characterId
+          
+          // Préparer tous les éléments avec les IDs mis à jour
+          const scriptItems = parsed.script.map((item: any) => {
             const updatedCharacterId = item.character && characterIdMap.has(item.character) 
               ? characterIdMap.get(item.character) 
               : item.character;
             
-            // Mettre à jour les references de characterId dans les mouvements
             let updatedMovement = item.movement;
             if (item.type === "movement" && item.movement?.characterId && characterIdMap.has(item.movement.characterId)) {
               updatedMovement = {
@@ -90,7 +88,7 @@ export function ImportScriptDialog({ open, onOpenChange, scriptId, onImportCompl
               };
             }
 
-            const apiItem = {
+            return {
               type: item.type,
               text: item.text,
               characterId: updatedCharacterId,
@@ -107,9 +105,13 @@ export function ImportScriptDialog({ open, onOpenChange, scriptId, onImportCompl
                   }
                 : undefined,
             };
+          });
 
-            toast.loading(`Création de l'élement ${i + 1} sur ${parsed.script.length}`, { id: idToast });
-            await createScriptItem(scriptId, apiItem, i);
+          // Créer tous les éléments en une seule transaction
+          const result = await createBulkScriptItems(scriptId, scriptItems);
+          
+          if (!result.success) {
+            throw new Error(typeof result.error === 'string' ? result.error : 'Erreur de validation des données');
           }
         }
 
@@ -145,12 +147,12 @@ export function ImportScriptDialog({ open, onOpenChange, scriptId, onImportCompl
             <Button variant="outline" disabled={isPending}>
               {isPending ? (
                 <>
-                  <Loader2Icon className="animate-spin mr-2 h-4 w-4" />
+                  <Loader2Icon className="animate-spin" />
                   Importation en cours...
                 </>
               ) : (
                 <>
-                  <UploadIcon className="mr-2 h-4 w-4" />
+                  <UploadIcon />
                   Sélectionner un fichier
                 </>
               )}
