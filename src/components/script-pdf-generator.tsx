@@ -89,6 +89,28 @@ const styles = {
   highlightedText: {
     backgroundColor: "#FFEB3B",
   },
+  imageContainer: {
+    marginVertical: 8,
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    alignItems: "center" as const,
+  },
+  image: {
+    maxWidth: "100%",
+    height: "auto",
+    marginBottom: 4,
+  },
+  imageCaption: {
+    fontSize: 8,
+    color: "#666666",
+    textAlign: "center" as const,
+    marginTop: 4,
+  },
+  imageDimensions: {
+    fontSize: 7,
+    color: "#666666",
+    textAlign: "center" as const,
+  },
 };
 
 interface ScriptPDFGeneratorProps {
@@ -116,7 +138,7 @@ export const ScriptPDFGenerator = memo(function ScriptPDFGenerator({ script, cha
     
     try {
       const { pdf } = await import('@react-pdf/renderer');
-      const { Document, Page, Text, View, StyleSheet } = await import('@react-pdf/renderer');
+      const { Document, Page, Text, View, StyleSheet, Image } = await import('@react-pdf/renderer');
       
       const pdfStyles = StyleSheet.create(styles);
       
@@ -188,15 +210,27 @@ export const ScriptPDFGenerator = memo(function ScriptPDFGenerator({ script, cha
                   )}
                   
                   {item.type === "image" && item.image && (
-                    <View style={pdfStyles.technicalBlock}>
-                      <Text style={pdfStyles.technicalHeader}>IMAGE:</Text>
-                      <Text style={pdfStyles.technicalContent}>
+                    <View style={pdfStyles.imageContainer}>
+                      <Image
+                        src={item.image.url}
+                        style={[
+                          pdfStyles.image,
+                          {
+                            width: item.image.width || 400,
+                            height: item.image.height || 300,
+                            objectFit: "contain",
+                          },
+                        ]}
+                      />
+                      <Text style={pdfStyles.imageCaption}>
                         {item.image.caption || "Image"}
                       </Text>
-                      <Text style={pdfStyles.technicalContent}>
-                        Dimensions: {item.image.width || "?"}x{item.image.height || "?"}px
+                      <Text style={pdfStyles.imageDimensions}>
+                        {item.image.width || "?"}x{item.image.height || "?"}px
                       </Text>
-                      <Text style={pdfStyles.technicalUrl}>{item.image.url}</Text>
+                      {item.image.type === "url" && (
+                        <Text style={pdfStyles.technicalUrl}>{item.image.url}</Text>
+                      )}
                     </View>
                   )}
                   
