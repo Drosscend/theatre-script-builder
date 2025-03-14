@@ -534,8 +534,6 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
               const updatedCharacterId = item.character && characterIdMap.has(item.character) 
                 ? characterIdMap.get(item.character) 
                 : item.character;
-
-              console.log({updatedCharacterId});
               
               // Mettre à jour les references de characterId dans les mouvements
               let updatedMovement = item.movement;

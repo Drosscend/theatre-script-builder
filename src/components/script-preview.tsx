@@ -91,7 +91,7 @@ export function ScriptPreview({ script, characters }: typeof ScriptPreviewProps)
                   {lineNumber}
                   <div className="flex-1">
                     <p className="font-bold" style={{ color: character.color }}>
-                      {`${character.stageName}:`}
+                      {`${character.stageName} (${character.realName}):`}
                     </p>
                     <p className="ml-8">{processedText}</p>
                   </div>
@@ -102,7 +102,7 @@ export function ScriptPreview({ script, characters }: typeof ScriptPreviewProps)
 
               const narratorPrefix = character ? (
                 <span className="font-bold" style={{ color: character.color }}>
-                  {`${character.stageName}: `}
+                  {`${character.stageName} (${character.realName}): `}
                 </span>
               ) : null;
 
