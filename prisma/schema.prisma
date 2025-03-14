@@ -71,6 +71,9 @@ model Image {
   id          String     @id @default(cuid())
   url         String
   caption     String?
+  width       Int?
+  height      Int?
+  type        String     // "url" | "base64"
   scriptItem  ScriptItem @relation(fields: [scriptItemId], references: [id], onDelete: Cascade)
   scriptItemId String    @unique
 }

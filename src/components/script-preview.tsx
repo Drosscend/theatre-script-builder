@@ -36,6 +36,9 @@ export const ScriptItemType = {
     | {
         url: string;
         caption?: string;
+        width?: number;
+        height?: number;
+        type: "url" | "base64";
       }
     | undefined,
   staging: undefined as
@@ -167,11 +170,23 @@ export function ScriptPreview({ script, characters, scriptId, scriptName }: type
                   <div className="flex-1 p-2 bg-slate-100 dark:bg-slate-800 rounded">
                     <p className="text-sm font-semibold">IMAGE:</p>
                     <div className="my-2">
-                      <div className="h-20 w-full flex items-center justify-center border rounded bg-gray-100">
-                        <p className="text-gray-500">Image temporairement désactivée</p>
+                      <div className="relative w-full" style={{ 
+                        aspectRatio: `${item.image.width || 16}/${item.image.height || 9}`,
+                        maxWidth: `${item.image.width || 800}px`,
+                        maxHeight: `${item.image.height || 600}px`,
+                        margin: '0 auto'
+                      }}>
+                        <img
+                          src={item.image.url}
+                          alt={item.image.caption || "Image"}
+                          className="w-full h-full object-contain rounded"
+                        />
                       </div>
                     </div>
-                    {item.image.caption && <p className="text-sm text-center italic mt-1">{`${item.image.caption}`}</p>}
+                    {item.image.caption && <p className="text-sm text-center italic mt-1">{item.image.caption}</p>}
+                    <p className="text-xs text-center text-muted-foreground mt-1">
+                      {item.image.width && item.image.height ? `${item.image.width}x${item.image.height}px` : "Dimensions non spécifiées"}
+                    </p>
                   </div>
                 </div>
               );

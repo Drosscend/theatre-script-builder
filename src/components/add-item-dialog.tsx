@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Character, ScriptItemType } from "./script-editor";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
 
 const AddItemDialogProps = {
   open: false,
@@ -66,6 +68,11 @@ const AddItemDialog = memo(function AddItemDialog({
   const [movementFrom, setMovementFrom] = useState<string>("");
   const [movementTo, setMovementTo] = useState<string>("");
   const [movementDescription, setMovementDescription] = useState<string>("");
+  const [imageType, setImageType] = useState<"url" | "base64">("url");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [imageWidth, setImageWidth] = useState<number>(800);
+  const [imageHeight, setImageHeight] = useState<number>(600);
 
   /**
    * Reset all form fields to their default values
@@ -94,6 +101,11 @@ const AddItemDialog = memo(function AddItemDialog({
     setMovementFrom("");
     setMovementTo("");
     setMovementDescription("");
+    setImageType("url");
+    setImageFile(null);
+    setImagePreview("");
+    setImageWidth(800);
+    setImageHeight(600);
   }, []);
 
   /**
@@ -122,9 +134,83 @@ const AddItemDialog = memo(function AddItemDialog({
   }, [existingSounds]);
 
   /**
+   * Handle image file selection and conversion to base64
+   */
+  const handleImageFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      toast.error("Erreur", {
+        description: "Le fichier doit être une image",
+      });
+      return;
+    }
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Erreur", {
+        description: "L'image ne doit pas dépasser 5MB",
+      });
+      return;
+    }
+
+    setImageFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  /**
+   * Convert image to base64 with size constraints
+   */
+  const convertImageToBase64 = useCallback(async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate aspect ratio
+        const aspectRatio = width / height;
+
+        // Resize if needed
+        if (width > imageWidth) {
+          width = imageWidth;
+          height = width / aspectRatio;
+        }
+        if (height > imageHeight) {
+          height = imageHeight;
+          width = height * aspectRatio;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not get canvas context'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  }, [imageWidth, imageHeight]);
+
+  /**
    * Handle form submission and create new script item
    */
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     const newItem: typeof ScriptItemType = {
       id: Date.now().toString(),
       type: itemType,
@@ -150,8 +236,11 @@ const AddItemDialog = memo(function AddItemDialog({
       image:
         itemType === "image"
           ? {
-              url: imageUrl,
+              url: imageType === "url" ? imageUrl : (await convertImageToBase64(imageFile!)),
               caption: imageCaption,
+              width: imageWidth,
+              height: imageHeight,
+              type: imageType,
             }
           : undefined,
       staging:
@@ -176,7 +265,7 @@ const AddItemDialog = memo(function AddItemDialog({
     onAdd(newItem);
     resetForm();
     onOpenChange(false);
-  }, [itemType, character, text, lightPosition, lightColor, lightIsOff, selectedLighting, useExistingLighting, soundUrl, soundTimecode, soundDescription, soundIsStop, selectedSound, useExistingSound, imageUrl, imageCaption, stagingItem, stagingPosition, stagingDescription, movementCharacter, movementFrom, movementTo, movementDescription, onAdd, resetForm, onOpenChange]);
+  }, [itemType, character, text, lightPosition, lightColor, lightIsOff, soundUrl, soundTimecode, soundDescription, soundIsStop, imageUrl, imageCaption, imageType, imageFile, imageWidth, imageHeight, stagingItem, stagingPosition, stagingDescription, movementCharacter, movementFrom, movementTo, movementDescription, onAdd, resetForm, onOpenChange, convertImageToBase64]);
 
   /**
    * Check if the form is valid based on current item type
@@ -192,7 +281,7 @@ const AddItemDialog = memo(function AddItemDialog({
       case "sound":
         return soundUrl && soundTimecode;
       case "image":
-        return imageUrl;
+        return imageType === "url" ? imageUrl : (imageType === "base64" && imageFile);
       case "staging":
         return stagingItem && stagingPosition;
       case "movement":
@@ -200,7 +289,7 @@ const AddItemDialog = memo(function AddItemDialog({
       default:
         return false;
     }
-  }, [itemType, character, text, lightPosition, lightColor, soundUrl, soundTimecode, imageUrl, stagingItem, stagingPosition]);
+  }, [itemType, character, text, lightPosition, lightColor, soundUrl, soundTimecode, imageUrl, imageType, imageFile, stagingItem, stagingPosition, movementCharacter, movementFrom, movementTo]);
 
   return (
     <Dialog
@@ -437,18 +526,81 @@ const AddItemDialog = memo(function AddItemDialog({
 
           {itemType === "image" && (
             <>
-              <div className="space-y-2">
-                <Label htmlFor="image-url">{`URL de l'image`}</Label>
-                <Input id="image-url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://example.com/image.jpg" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="image-caption">Légende (optionnel)</Label>
-                <Input
-                  id="image-caption"
-                  value={imageCaption}
-                  onChange={(e) => setImageCaption(e.target.value)}
-                  placeholder="Description de l'image"
-                />
+              <div className="space-y-4">
+                <Tabs value={imageType} onValueChange={(value) => setImageType(value as "url" | "base64")}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="url">URL</TabsTrigger>
+                    <TabsTrigger value="base64">Image locale</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="url">
+                    <div className="space-y-2">
+                      <Label htmlFor="image-url">URL de l'image</Label>
+                      <Input
+                        id="image-url"
+                        value={imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
+                        placeholder="https://example.com/image.jpg"
+                      />
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="base64">
+                    <div className="space-y-2">
+                      <Label htmlFor="image-file">Sélectionner une image</Label>
+                      <Input
+                        id="image-file"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageFileChange}
+                      />
+                      {imagePreview && (
+                        <div className="mt-2">
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="max-w-full h-auto rounded-lg"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="image-width">Largeur (px)</Label>
+                    <Input
+                      id="image-width"
+                      type="number"
+                      value={imageWidth}
+                      onChange={(e) => setImageWidth(Number(e.target.value))}
+                      min={100}
+                      max={2000}
+                      step={100}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="image-height">Hauteur (px)</Label>
+                    <Input
+                      id="image-height"
+                      type="number"
+                      value={imageHeight}
+                      onChange={(e) => setImageHeight(Number(e.target.value))}
+                      min={100}
+                      max={2000}
+                      step={100}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="image-caption">Légende (optionnel)</Label>
+                  <Input
+                    id="image-caption"
+                    value={imageCaption}
+                    onChange={(e) => setImageCaption(e.target.value)}
+                    placeholder="Description de l'image"
+                  />
+                </div>
               </div>
             </>
           )}

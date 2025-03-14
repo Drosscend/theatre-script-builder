@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Character, ScriptItemType } from "./script-editor";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
 
 const EditItemDialogProps = {
   open: false,
@@ -71,6 +73,11 @@ const EditItemDialog = memo(function EditItemDialog({
   const [movementFrom, setMovementFrom] = useState<string>(item.movement?.from || "");
   const [movementTo, setMovementTo] = useState<string>(item.movement?.to || "");
   const [movementDescription, setMovementDescription] = useState<string>(item.movement?.description || "");
+  const [imageType, setImageType] = useState<"url" | "base64">(item.image?.type || "url");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>(item.image?.url || "");
+  const [imageWidth, setImageWidth] = useState<number>(item.image?.width || 800);
+  const [imageHeight, setImageHeight] = useState<number>(item.image?.height || 600);
 
   /**
    * Update state when item changes
@@ -99,6 +106,10 @@ const EditItemDialog = memo(function EditItemDialog({
     setMovementFrom(item.movement?.from || "");
     setMovementTo(item.movement?.to || "");
     setMovementDescription(item.movement?.description || "");
+    setImageType(item.image?.type || "url");
+    setImagePreview(item.image?.url || "");
+    setImageWidth(item.image?.width || 800);
+    setImageHeight(item.image?.height || 600);
   }, [item]);
 
   /**
@@ -127,9 +138,83 @@ const EditItemDialog = memo(function EditItemDialog({
   }, [existingSounds]);
 
   /**
+   * Handle image file selection and conversion to base64
+   */
+  const handleImageFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      toast.error("Erreur", {
+        description: "Le fichier doit être une image",
+      });
+      return;
+    }
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Erreur", {
+        description: "L'image ne doit pas dépasser 5MB",
+      });
+      return;
+    }
+
+    setImageFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  /**
+   * Convert image to base64 with size constraints
+   */
+  const convertImageToBase64 = useCallback(async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate aspect ratio
+        const aspectRatio = width / height;
+
+        // Resize if needed
+        if (width > imageWidth) {
+          width = imageWidth;
+          height = width / aspectRatio;
+        }
+        if (height > imageHeight) {
+          height = imageHeight;
+          width = height * aspectRatio;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not get canvas context'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  }, [imageWidth, imageHeight]);
+
+  /**
    * Handle form submission and update existing script item
    */
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     const updatedItem: typeof ScriptItemType = {
       ...item,
       type: itemType,
@@ -171,8 +256,11 @@ const EditItemDialog = memo(function EditItemDialog({
         break;
       case "image":
         updatedItem.image = {
-          url: imageUrl,
+          url: imageType === "url" ? imageUrl : (await convertImageToBase64(imageFile!)),
           caption: imageCaption,
+          width: imageWidth,
+          height: imageHeight,
+          type: imageType,
         };
         break;
       case "staging":
@@ -194,7 +282,7 @@ const EditItemDialog = memo(function EditItemDialog({
 
     onUpdate(updatedItem);
     onOpenChange(false);
-  }, [itemType, character, text, lightPosition, lightColor, lightIsOff, soundUrl, soundTimecode, soundDescription, soundIsStop, imageUrl, imageCaption, stagingItem, stagingPosition, stagingDescription, movementCharacter, movementFrom, movementTo, movementDescription, onUpdate, onOpenChange]);
+  }, [itemType, character, text, lightPosition, lightColor, lightIsOff, soundUrl, soundTimecode, soundDescription, soundIsStop, imageUrl, imageCaption, imageType, imageFile, imageWidth, imageHeight, stagingItem, stagingPosition, stagingDescription, movementCharacter, movementFrom, movementTo, movementDescription, onUpdate, onOpenChange, convertImageToBase64]);
 
   /**
    * Check if the form is valid based on current item type
@@ -428,23 +516,81 @@ const EditItemDialog = memo(function EditItemDialog({
 
           {itemType === "image" && (
             <>
-              <div className="space-y-2">
-                <Label htmlFor="edit-image-url">{`URL de l'image`}</Label>
-                <Input
-                  id="edit-image-url"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://example.com/image.jpg"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-image-caption">Légende</Label>
-                <Input
-                  id="edit-image-caption"
-                  value={imageCaption}
-                  onChange={(e) => setImageCaption(e.target.value)}
-                  placeholder="ex: Acteur regardant la caméra"
-                />
+              <div className="space-y-4">
+                <Tabs value={imageType} onValueChange={(value) => setImageType(value as "url" | "base64")}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="url">URL</TabsTrigger>
+                    <TabsTrigger value="base64">Image locale</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="url">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-image-url">URL de l'image</Label>
+                      <Input
+                        id="edit-image-url"
+                        value={imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
+                        placeholder="https://example.com/image.jpg"
+                      />
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="base64">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-image-file">Sélectionner une image</Label>
+                      <Input
+                        id="edit-image-file"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageFileChange}
+                      />
+                      {imagePreview && (
+                        <div className="mt-2">
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="max-w-full h-auto rounded-lg"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-image-width">Largeur (px)</Label>
+                    <Input
+                      id="edit-image-width"
+                      type="number"
+                      value={imageWidth}
+                      onChange={(e) => setImageWidth(Number(e.target.value))}
+                      min={100}
+                      max={2000}
+                      step={100}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-image-height">Hauteur (px)</Label>
+                    <Input
+                      id="edit-image-height"
+                      type="number"
+                      value={imageHeight}
+                      onChange={(e) => setImageHeight(Number(e.target.value))}
+                      min={100}
+                      max={2000}
+                      step={100}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-image-caption">Légende</Label>
+                  <Input
+                    id="edit-image-caption"
+                    value={imageCaption}
+                    onChange={(e) => setImageCaption(e.target.value)}
+                    placeholder="Description de l'image"
+                  />
+                </div>
               </div>
             </>
           )}

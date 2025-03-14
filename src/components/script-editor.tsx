@@ -52,6 +52,9 @@ export const ScriptItemType = {
     | {
         url: string;
         caption?: string;
+        width?: number;
+        height?: number;
+        type: "url" | "base64";
       }
     | undefined,
   staging: undefined as
@@ -174,7 +177,7 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId, scrip
           text?: string;
           lighting?: { position: string; color: string; isOff?: boolean };
           sound?: { url: string; timecode: string; description?: string; isStop?: boolean };
-          image?: { url: string; caption?: string };
+          image?: { url: string; caption?: string; width?: number; height?: number; type: "url" | "base64" };
           staging?: { item: string; position: string; description?: string };
           movement?: { characterId: string; from: string; to: string; description?: string };
         };
@@ -203,6 +206,9 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId, scrip
             ? {
                 url: data.image.url,
                 caption: data.image.caption || "",
+                width: data.image.width,
+                height: data.image.height,
+                type: data.image.type || "url",
               }
             : undefined,
           staging: data.staging
@@ -276,7 +282,7 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId, scrip
           text?: string;
           lighting?: { position: string; color: string; isOff?: boolean };
           sound?: { url: string; timecode: string; description?: string; isStop?: boolean };
-          image?: { url: string; caption?: string };
+          image?: { url: string; caption?: string; width?: number; height?: number; type: "url" | "base64" };
           staging?: { item: string; position: string; description?: string };
           movement?: { characterId: string; from: string; to: string; description?: string };
         };
@@ -305,6 +311,9 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId, scrip
             ? {
                 url: data.image.url,
                 caption: data.image.caption || "",
+                width: data.image.width,
+                height: data.image.height,
+                type: data.image.type || "url",
               }
             : undefined,
           staging: data.staging

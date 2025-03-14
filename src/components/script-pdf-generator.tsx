@@ -190,10 +190,13 @@ export const ScriptPDFGenerator = memo(function ScriptPDFGenerator({ script, cha
                   {item.type === "image" && item.image && (
                     <View style={pdfStyles.technicalBlock}>
                       <Text style={pdfStyles.technicalHeader}>IMAGE:</Text>
+                      <Text style={pdfStyles.technicalContent}>
+                        {item.image.caption || "Image"}
+                      </Text>
+                      <Text style={pdfStyles.technicalContent}>
+                        Dimensions: {item.image.width || "?"}x{item.image.height || "?"}px
+                      </Text>
                       <Text style={pdfStyles.technicalUrl}>{item.image.url}</Text>
-                      {item.image.caption && (
-                        <Text style={pdfStyles.technicalContent}>{item.image.caption}</Text>
-                      )}
                     </View>
                   )}
                   

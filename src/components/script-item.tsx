@@ -116,7 +116,7 @@ function ScriptItem({
         return `${item.sound.description || ""} (${item.sound.timecode || ""})`;
       case "image":
         if (!item.image) return "Informations d'image non disponibles";
-        return item.image.caption || item.image.url || "";
+        return `${item.image.caption || "Image"} (${item.image.width || "?"}x${item.image.height || "?"})`;
       case "staging":
         if (!item.staging) return "Informations de mise en scène non disponibles";
         return `${item.staging.item || ""} - Position: ${item.staging.position || ""} - ${item.staging.description || ""}`;
