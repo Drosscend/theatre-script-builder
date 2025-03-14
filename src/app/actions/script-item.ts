@@ -20,6 +20,9 @@ const soundSchema = z.object({
 
 const imageSchema = z.object({
   url: z.string(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  type: z.enum(["url", "base64"]),
   caption: z.string().optional(),
 });
 
