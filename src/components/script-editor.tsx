@@ -1,7 +1,7 @@
 "use client";
 
-import { createCharacter, deleteCharacter } from "@/app/actions/character";
-import { createScriptItem, deleteScriptItem, reorderScriptItems, updateScriptItem } from "@/app/actions/script-item";
+import { createCharacter } from "@/app/actions/character";
+import { createScriptItem, deleteAllScriptItems, deleteScriptItem, reorderScriptItems, updateScriptItem } from "@/app/actions/script-item";
 import { DndContext, DragEndEvent, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -484,10 +484,9 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
           const characterIdMap = new Map<string, string>();
 
           if (parsed.characters && Array.isArray(parsed.characters)) {
-            toast.loading("Suppression des personnages existants...", { id: idToast });
-            const deletePromises = characters.map((char) => deleteCharacter(char.id));
-            await Promise.all(deletePromises);
-            toast.success("Suppression des personnages existants...", { id: idToast });
+            toast.loading("Suppression des éléments existants...", { id: idToast });
+            await deleteAllScriptItems(scriptId);
+            toast.success("Suppression des éléments existants terminée", { id: idToast });
 
             const createPromises = parsed.characters.map((char: any) => {
               const { id, ...charData } = char;
@@ -526,11 +525,6 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
           }
 
           if (parsed.script && Array.isArray(parsed.script)) {
-            const deletePromises = script.map((item) => deleteScriptItem(item.id));
-            toast.loading("Suppression des éléments existants...", { id: idToast });
-            await Promise.all(deletePromises);
-            toast.success("Suppression des éléments existants...", { id: idToast });
-
             toast.loading("Création des éléments...", { id: idToast });
             const newItems: (typeof ScriptItemType)[] = [];
             for (let i = 0; i < parsed.script.length; i++) {

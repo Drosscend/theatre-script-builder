@@ -287,6 +287,13 @@ export async function deleteScriptItem(id: string) {
   }
 }
 
+// Supprimer tous les éléments de script
+export async function deleteAllScriptItems(scriptId: string) {
+  await prisma.scriptItem.deleteMany({ where: { scriptId } });
+  revalidatePath(`/scripts/${scriptId}`);
+  revalidatePath(`/scripts/${scriptId}/apercu`);
+}
+
 // Réorganiser les éléments de script
 export async function reorderScriptItems(scriptId: string, itemIds: string[]) {
   try {
