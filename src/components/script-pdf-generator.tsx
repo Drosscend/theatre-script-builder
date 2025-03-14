@@ -132,7 +132,20 @@ export const ScriptPDFGenerator = memo(function ScriptPDFGenerator({ script, cha
                   )}
                   
                   {item.type === "narration" && (
-                    <Text style={pdfStyles.narrationText}>{item.text}</Text>
+                    <>
+                      {item.character && (
+                        <Text style={[
+                          pdfStyles.dialogueHeader,
+                          { color: characters.find((c) => c.id === item.character)?.color || "#000000" }
+                        ]}>
+                          {`Narrateur - ${characters.find((c) => c.id === item.character)?.stageName || "Personnage"} (${characters.find((c) => c.id === item.character)?.realName || "Inconnu"}):`}
+                        </Text>
+                      )}
+                      <Text style={[
+                        pdfStyles.narrationText,
+                        item.character ? { marginLeft: 16 } : {}
+                      ]}>{item.text}</Text>
+                    </>
                   )}
                   
                   {item.type === "lighting" && item.lighting && (
