@@ -18,6 +18,7 @@ import { Card } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ImportScriptDialog } from "@/components/import-script-dialog";
+import { DeleteScriptButton } from "./delete-script-button";
 
 export const Character = {
   id: "",
@@ -87,9 +88,10 @@ export const ScriptEditorProps = {
     }
   >,
   scriptId: "",
+  scriptName: "",
 };
 
-export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typeof ScriptEditorProps) {
+export function ScriptEditor({ initialScript, initialCharacters, scriptId, scriptName }: typeof ScriptEditorProps) {
   const [script, setScript] = useState<
     Array<
       typeof ScriptItemType & {
@@ -480,7 +482,7 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Éditeur de Pièce de Théâtre</h1>
+        <h1 className="text-3xl font-bold">{scriptName}</h1>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setIsCharactersDialogOpen(true)}>
             <UsersIcon />
@@ -501,6 +503,7 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
             </Button>
           </Link>
           <ScriptPDFGenerator script={script} characters={characters} />
+          <DeleteScriptButton scriptId={scriptId} scriptName={scriptName} />
         </div>
       </div>
 

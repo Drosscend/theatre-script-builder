@@ -99,18 +99,8 @@ export default async function ScriptPage({ params }: PageProps) {
   const script = await getScript((await params).id);
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>{script.name}</CardTitle>
-            {script.description && <CardDescription>{script.description}</CardDescription>}
-          </div>
-          <DeleteScriptButton scriptId={script.id} scriptName={script.name} />
-        </CardHeader>
-      </Card>
-
-      <ScriptEditor initialScript={script.items} initialCharacters={script.characters} scriptId={script.id} />
+    <div className="container mx-auto space-y-6">
+      <ScriptEditor initialScript={script.items} initialCharacters={script.characters} scriptId={script.id} scriptName={script.name} />
     </div>
   );
 }
