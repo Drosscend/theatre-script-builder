@@ -1,56 +1,80 @@
 "use client";
 
 import { useState, useCallback, memo } from "react";
-import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { FileTextIcon } from "lucide-react";
 import { Character, ScriptItemType } from "./script-editor";
 
-// Définition des styles pour le PDF
+// PDF styles definition
 const styles = {
   page: {
     flexDirection: "column" as const,
     backgroundColor: "#FFFFFF",
-    padding: 30,
+    padding: 40,
   },
   title: {
-    fontSize: 24,
-    marginBottom: 20,
+    fontSize: 20,
+    marginBottom: 30,
     textAlign: "center" as const,
     fontWeight: "bold" as const,
   },
   section: {
-    marginBottom: 10,
+    marginBottom: 8,
+    display: "flex" as const,
+    flexDirection: "row" as const,
   },
-  itemHeader: {
-    fontSize: 12,
-    fontWeight: "bold" as const,
-    marginBottom: 3,
+  lineNumber: {
+    width: 24,
+    fontSize: 8,
+    color: "#666666",
+    marginRight: 8,
   },
-  itemContent: {
+  content: {
+    flex: 1,
+  },
+  dialogueHeader: {
     fontSize: 10,
-    marginBottom: 5,
-  },
-  characterName: {
     fontWeight: "bold" as const,
+    marginBottom: 2,
   },
   dialogueText: {
-    marginLeft: 10,
+    fontSize: 9,
+    marginLeft: 16,
+    marginBottom: 4,
   },
   narrationText: {
-    fontStyle: "italic" as const,
-  },
-  technicalInfo: {
     fontSize: 9,
-    color: "#666666",
+    fontStyle: "italic" as const,
+    marginBottom: 4,
+  },
+  technicalBlock: {
+    backgroundColor: "#F8F9FA",
+    padding: 8,
+    marginBottom: 4,
+    borderRadius: 4,
+  },
+  technicalHeader: {
+    fontSize: 9,
+    fontWeight: "bold" as const,
+    marginBottom: 2,
+  },
+  technicalContent: {
+    fontSize: 8,
+    color: "#374151",
+  },
+  technicalUrl: {
+    fontSize: 7,
+    color: "#3B82F6",
+    textDecoration: "underline" as const,
   },
   pageNumber: {
     position: "absolute" as const,
-    fontSize: 10,
-    bottom: 20,
+    fontSize: 8,
+    bottom: 30,
     left: 0,
     right: 0,
     textAlign: "center" as const,
+    color: "#666666",
   },
 };
 
@@ -86,81 +110,96 @@ export const ScriptPDFGenerator = memo(function ScriptPDFGenerator({ script, cha
       const MyDocument = () => (
         <Document>
           <Page size="A4" style={pdfStyles.page}>
-            <Text style={pdfStyles.title}>Script de Théâtre</Text>
+            <Text style={pdfStyles.title}>Theatre Script</Text>
             
             {script.map((item, index: number) => (
               <View key={index} style={pdfStyles.section}>
-                {item.type === "dialogue" && item.character && (
-                  <>
-                    <Text style={pdfStyles.characterName}>
-                      {characters.find((c) => c.id === item.character)?.stageName || "Personnage"}:
-                    </Text>
-                    <Text style={pdfStyles.dialogueText}>{item.text}</Text>
-                  </>
-                )}
+                <Text style={pdfStyles.lineNumber}>
+                  {(index + 1).toString().padStart(2, '0')}
+                </Text>
                 
-                {item.type === "narration" && (
-                  <Text style={pdfStyles.narrationText}>{item.text}</Text>
-                )}
-                
-                {item.type === "lighting" && item.lighting && (
-                  <>
-                    <Text style={pdfStyles.itemHeader}>ÉCLAIRAGE:</Text>
-                    <Text style={pdfStyles.itemContent}>
-                      Position: {item.lighting.position}
-                      {item.lighting.color && `, Couleur: ${item.lighting.color}`}
-                    </Text>
-                  </>
-                )}
-                
-                {item.type === "sound" && item.sound && (
-                  <>
-                    <Text style={pdfStyles.itemHeader}>SON:</Text>
-                    <Text style={pdfStyles.itemContent}>
-                      {item.sound.description} ({item.sound.timecode})
-                    </Text>
-                    <Text style={pdfStyles.technicalInfo}>{item.sound.url}</Text>
-                  </>
-                )}
-                
-                {item.type === "image" && item.image && (
-                  <>
-                    <Text style={pdfStyles.itemHeader}>IMAGE:</Text>
-                    <Text style={pdfStyles.technicalInfo}>{item.image.url}</Text>
-                    {item.image.caption && (
-                      <Text style={pdfStyles.itemContent}>{item.image.caption}</Text>
-                    )}
-                  </>
-                )}
-                
-                {item.type === "staging" && item.staging && (
-                  <>
-                    <Text style={pdfStyles.itemHeader}>MISE EN SCÈNE - {item.staging.item}:</Text>
-                    <Text style={pdfStyles.itemContent}>Position: {item.staging.position}</Text>
-                    {item.staging.description && (
-                      <Text style={pdfStyles.itemContent}>{item.staging.description}</Text>
-                    )}
-                  </>
-                )}
-                
-                {item.type === "movement" && item.movement && (
-                  <>
-                    <Text style={pdfStyles.itemHeader}>MOUVEMENT:</Text>
-                    <Text style={pdfStyles.itemContent}>
-                      {characters.find((c) => c.id === item.movement?.characterId)?.stageName || "Personnage"}: 
-                      {` ${item.movement.from} → ${item.movement.to}`}
-                    </Text>
-                    {item.movement.description && (
-                      <Text style={pdfStyles.itemContent}>{item.movement.description}</Text>
-                    )}
-                  </>
-                )}
+                <View style={pdfStyles.content}>
+                  {item.type === "dialogue" && item.character && (
+                    <>
+                      <Text style={[
+                        pdfStyles.dialogueHeader,
+                        { color: characters.find((c) => c.id === item.character)?.color || "#000000" }
+                      ]}>
+                        {`${characters.find((c) => c.id === item.character)?.stageName || "Character"} (${characters.find((c) => c.id === item.character)?.realName || "Unknown"}):`}
+                      </Text>
+                      <Text style={pdfStyles.dialogueText}>{item.text}</Text>
+                    </>
+                  )}
+                  
+                  {item.type === "narration" && (
+                    <Text style={pdfStyles.narrationText}>{item.text}</Text>
+                  )}
+                  
+                  {item.type === "lighting" && item.lighting && (
+                    <View style={pdfStyles.technicalBlock}>
+                      <Text style={pdfStyles.technicalHeader}>ÉCLAIRAGE:</Text>
+                      <Text style={pdfStyles.technicalContent}>
+                        Position: {item.lighting.position}
+                        {item.lighting.color && `, Couleur: ${item.lighting.color}`}
+                      </Text>
+                    </View>
+                  )}
+                  
+                  {item.type === "sound" && item.sound && (
+                    <View style={pdfStyles.technicalBlock}>
+                      <Text style={pdfStyles.technicalHeader}>SON:</Text>
+                      <Text style={pdfStyles.technicalContent}>
+                        {item.sound.description} ({item.sound.timecode})
+                      </Text>
+                      <Text style={pdfStyles.technicalUrl}>{item.sound.url}</Text>
+                    </View>
+                  )}
+                  
+                  {item.type === "image" && item.image && (
+                    <View style={pdfStyles.technicalBlock}>
+                      <Text style={pdfStyles.technicalHeader}>IMAGE:</Text>
+                      <Text style={pdfStyles.technicalUrl}>{item.image.url}</Text>
+                      {item.image.caption && (
+                        <Text style={pdfStyles.technicalContent}>{item.image.caption}</Text>
+                      )}
+                    </View>
+                  )}
+                  
+                  {item.type === "staging" && item.staging && (
+                    <View style={pdfStyles.technicalBlock}>
+                      <Text style={pdfStyles.technicalHeader}>MISE EN SCÈNE - {item.staging.item}:</Text>
+                      <Text style={pdfStyles.technicalContent}>Position: {item.staging.position}</Text>
+                      {item.staging.description && (
+                        <Text style={[pdfStyles.technicalContent, { fontStyle: "italic" }]}>
+                          {item.staging.description}
+                        </Text>
+                      )}
+                    </View>
+                  )}
+                  
+                  {item.type === "movement" && item.movement && (
+                    <View style={pdfStyles.technicalBlock}>
+                      <Text style={pdfStyles.technicalHeader}>MOUVEMENT:</Text>
+                      <Text style={pdfStyles.technicalContent}>
+                        {characters.find((c) => c.id === item.movement?.characterId)?.stageName || "Personnage"}: 
+                        {` ${item.movement.from} → ${item.movement.to}`}
+                      </Text>
+                      {item.movement.description && (
+                        <Text style={[pdfStyles.technicalContent, { fontStyle: "italic" }]}>
+                          {item.movement.description}
+                        </Text>
+                      )}
+                    </View>
+                  )}
+                </View>
               </View>
             ))}
             
             <Text 
               style={pdfStyles.pageNumber} 
-              render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) => `${pageNumber} / ${totalPages}`} 
+              render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) => 
+                `${pageNumber} / ${totalPages}`
+              } 
             />
           </Page>
         </Document>
