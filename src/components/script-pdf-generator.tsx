@@ -4,6 +4,16 @@ import { useState, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { FileTextIcon } from "lucide-react";
 import { Character, ScriptItemType } from "./script-editor";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // PDF styles definition
 const styles = {
@@ -76,6 +86,9 @@ const styles = {
     textAlign: "center" as const,
     color: "#666666",
   },
+  highlightedText: {
+    backgroundColor: "#FFEB3B",
+  },
 };
 
 interface ScriptPDFGeneratorProps {
@@ -94,19 +107,19 @@ interface ScriptPDFGeneratorProps {
 
 export const ScriptPDFGenerator = memo(function ScriptPDFGenerator({ script, characters }: ScriptPDFGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedCharacters, setSelectedCharacters] = useState<string[]>([]);
 
-  const generatePDF = useCallback(async () => {
+  const onGeneratePDF = useCallback(async () => {
+    setIsDialogOpen(false);
     setIsGenerating(true);
     
     try {
-      // Import dynamiquement les modules react-pdf uniquement côté client
       const { pdf } = await import('@react-pdf/renderer');
       const { Document, Page, Text, View, StyleSheet } = await import('@react-pdf/renderer');
       
-      // Créer les styles avec StyleSheet
       const pdfStyles = StyleSheet.create(styles);
       
-      // Créer le document PDF
       const MyDocument = () => (
         <Document>
           <Page size="A4" style={pdfStyles.page}>
@@ -123,11 +136,15 @@ export const ScriptPDFGenerator = memo(function ScriptPDFGenerator({ script, cha
                     <>
                       <Text style={[
                         pdfStyles.dialogueHeader,
-                        { color: characters.find((c) => c.id === item.character)?.color || "#000000" }
+                        { color: characters.find((c) => c.id === item.character)?.color || "#000000" },
+                        selectedCharacters.includes(item.character) ? pdfStyles.highlightedText : {}
                       ]}>
                         {`${characters.find((c) => c.id === item.character)?.stageName || "Character"} (${characters.find((c) => c.id === item.character)?.realName || "Unknown"}):`}
                       </Text>
-                      <Text style={pdfStyles.dialogueText}>{item.text}</Text>
+                      <Text style={[
+                        pdfStyles.dialogueText,
+                        selectedCharacters.includes(item.character) ? pdfStyles.highlightedText : {}
+                      ]}>{item.text}</Text>
                     </>
                   )}
                   
@@ -136,14 +153,16 @@ export const ScriptPDFGenerator = memo(function ScriptPDFGenerator({ script, cha
                       {item.character && (
                         <Text style={[
                           pdfStyles.dialogueHeader,
-                          { color: characters.find((c) => c.id === item.character)?.color || "#000000" }
+                          { color: characters.find((c) => c.id === item.character)?.color || "#000000" },
+                          selectedCharacters.includes(item.character) ? pdfStyles.highlightedText : {}
                         ]}>
                           {`Narrateur - ${characters.find((c) => c.id === item.character)?.stageName || "Personnage"} (${characters.find((c) => c.id === item.character)?.realName || "Inconnu"}):`}
                         </Text>
                       )}
                       <Text style={[
                         pdfStyles.narrationText,
-                        item.character ? { marginLeft: 16 } : {}
+                        item.character ? { marginLeft: 16 } : {},
+                        item.character && selectedCharacters.includes(item.character) ? pdfStyles.highlightedText : {}
                       ]}>{item.text}</Text>
                     </>
                   )}
@@ -210,43 +229,86 @@ export const ScriptPDFGenerator = memo(function ScriptPDFGenerator({ script, cha
             
             <Text 
               style={pdfStyles.pageNumber} 
-              render={({ pageNumber, totalPages }: { pageNumber: number; totalPages: number }) => 
-                `${pageNumber} / ${totalPages}`
-              } 
+              render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} 
             />
           </Page>
         </Document>
       );
       
-      // Générer le blob PDF
       const blob = await pdf(<MyDocument />).toBlob();
-      
-      // Créer une URL pour le blob
       const url = URL.createObjectURL(blob);
       
-      // Créer un lien de téléchargement et cliquer dessus
       const link = document.createElement('a');
       link.href = url;
       link.download = `theatre-script-${new Date().toISOString().slice(0, 10)}.pdf`;
       link.click();
       
-      // Nettoyer l'URL
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Erreur lors de la génération du PDF:', error);
     } finally {
       setIsGenerating(false);
     }
-  }, [script, characters]);
+  }, [script, characters, selectedCharacters]);
+
+  const toggleCharacter = useCallback((characterId: string) => {
+    setSelectedCharacters(prev => 
+      prev.includes(characterId)
+        ? prev.filter(id => id !== characterId)
+        : [...prev, characterId]
+    );
+  }, []);
 
   return (
-    <Button 
-      variant="outline" 
-      onClick={generatePDF} 
-      disabled={isGenerating}
-    >
-      <FileTextIcon />
-      {isGenerating ? "Génération..." : "Générer PDF"}
-    </Button>
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <DialogTrigger asChild>
+        <Button 
+          variant="outline" 
+          onClick={() => setIsDialogOpen(true)}
+          disabled={isGenerating}
+        >
+          <FileTextIcon className="mr-2 h-4 w-4" />
+          {isGenerating ? "Génération..." : "Générer PDF"}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Sélectionner les personnages à surligner</DialogTitle>
+        </DialogHeader>
+        <ScrollArea className="max-h-[60vh] mt-4">
+          <div className="space-y-4 p-2">
+            {characters.map((character) => (
+              <div key={character.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={character.id}
+                  checked={selectedCharacters.includes(character.id)}
+                  onCheckedChange={() => toggleCharacter(character.id)}
+                />
+                <Label
+                  htmlFor={character.id}
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  {character.stageName} ({character.realName})
+                </Label>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+        <div className="flex justify-end space-x-2 mt-4">
+          <Button
+            variant="outline"
+            onClick={() => setIsDialogOpen(false)}
+          >
+            Annuler
+          </Button>
+          <Button
+            onClick={onGeneratePDF}
+            disabled={isGenerating}
+          >
+            Générer
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 });
