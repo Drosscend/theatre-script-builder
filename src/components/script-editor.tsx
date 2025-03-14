@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ImportScriptDialog } from "@/components/import-script-dialog";
 
 export const Character = {
   id: "",
@@ -110,8 +111,8 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
   >(initialCharacters);
   const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
   const [isCharactersDialogOpen, setIsCharactersDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
 
@@ -467,184 +468,8 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
     linkElement.click();
   };
 
-  const importScript = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const idToast = toast.loading("Importation en cours...");
-    
-    startTransition(async () => {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const content = e.target?.result as string;
-          const parsed = JSON.parse(content);
-          
-          // Créer un mappage entre les anciens et nouveaux IDs de personnages
-          const characterIdMap = new Map<string, string>();
-
-          if (parsed.characters && Array.isArray(parsed.characters)) {
-            toast.loading("Suppression des éléments existants...", { id: idToast });
-            await deleteAllScriptItems(scriptId);
-            toast.success("Suppression des éléments existants terminée", { id: idToast });
-
-            const createPromises = parsed.characters.map((char: any) => {
-              const { id, ...charData } = char;
-              return { oldId: id, promise: createCharacter(scriptId, charData) };
-            });
-            
-            toast.loading("Création des personnages...", { id: idToast });
-            const results = await Promise.all(createPromises.map((item: { promise: Promise<any>; oldId: string }) => item.promise));
-            
-            // Construire le mappage id ancien -> id nouveau
-            results.forEach((result, index) => {
-              if (result.success && result.data) {
-                const oldId = createPromises[index].oldId;
-                const newData = result.data as { id: string; realName: string; stageName: string; role: string; color: string };
-                characterIdMap.set(oldId, newData.id);
-              }
-            });
-            console.log({characterIdMap});
-            
-            toast.success("Création des personnages...", { id: idToast });
-
-            const newCharacters = results
-              .filter((result) => result.success && result.data)
-              .map((result) => {
-                const data = result.data as { id: string; realName: string; stageName: string; role: string; color: string };
-                return {
-                  id: data.id,
-                  realName: data.realName,
-                  stageName: data.stageName,
-                  role: data.role,
-                  color: data.color,
-                } as typeof Character;
-              });
-
-            setCharacters(newCharacters);
-          }
-
-          if (parsed.script && Array.isArray(parsed.script)) {
-            toast.loading("Création des éléments...", { id: idToast });
-            const newItems: (typeof ScriptItemType)[] = [];
-            for (let i = 0; i < parsed.script.length; i++) {
-              const item = parsed.script[i];
-              
-              // Mettre à jour les references de characterId
-              const updatedCharacterId = item.character && characterIdMap.has(item.character) 
-                ? characterIdMap.get(item.character) 
-                : item.character;
-              
-              // Mettre à jour les references de characterId dans les mouvements
-              let updatedMovement = item.movement;
-              if (item.type === "movement" && item.movement?.characterId && characterIdMap.has(item.movement.characterId)) {
-                updatedMovement = {
-                  ...item.movement,
-                  characterId: characterIdMap.get(item.movement.characterId) || item.movement.characterId
-                };
-              }
-
-              const apiItem = {
-                type: item.type,
-                text: item.text,
-                characterId: updatedCharacterId,
-                lighting: item.lighting,
-                sound: item.sound,
-                image: item.image,
-                staging: item.staging,
-                movement: updatedMovement 
-                  ? {
-                      characterId: updatedMovement.characterId || "",
-                      from: updatedMovement.from || "",
-                      to: updatedMovement.to || "",
-                      description: updatedMovement.description,
-                    }
-                  : undefined,
-              };
-
-              toast.loading(`Création de l'élement ${i + 1} sur ${parsed.script.length}`, { id: idToast });
-              const result = await createScriptItem(scriptId, apiItem, i);
-
-              if (result.success && result.data) {
-                const data = result.data as {
-                  id: string;
-                  type: string;
-                  characterId?: string;
-                  text?: string;
-                  lighting?: { position: string; color: string; isOff?: boolean };
-                  sound?: { url: string; timecode: string; description?: string; isStop?: boolean };
-                  image?: { url: string; caption?: string };
-                  staging?: { item: string; position: string; description?: string };
-                  movement?: { characterId: string; from: string; to: string; description?: string };
-                };
-                const newItem: typeof ScriptItemType = {
-                  id: data.id,
-                  type: data.type as "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement",
-                  character: data.characterId || undefined,
-                  text: data.text || undefined,
-                  lighting: data.lighting
-                    ? {
-                        position: data.lighting.position,
-                        color: data.lighting.color,
-                        isOff: data.lighting.isOff || false,
-                      }
-                    : undefined,
-                  sound: data.sound
-                    ? {
-                        url: data.sound.url,
-                        timecode: data.sound.timecode,
-                        description: data.sound.description || "",
-                        isStop: data.sound.isStop || false,
-                      }
-                    : undefined,
-                  image: data.image
-                    ? {
-                        url: data.image.url,
-                        caption: data.image.caption,
-                      }
-                    : undefined,
-                  staging: data.staging
-                    ? {
-                        item: data.staging.item,
-                        position: data.staging.position,
-                        description: data.staging.description,
-                      }
-                    : undefined,
-                  movement: data.movement
-                    ? {
-                        characterId: data.movement.characterId,
-                        from: data.movement.from,
-                        to: data.movement.to,
-                        description: data.movement.description,
-                      }
-                    : undefined,
-                };
-
-                newItems.push(newItem);
-              }
-            }
-
-            setScript(newItems);
-          }
-
-          toast.success("Import réussi", {
-            description: "Le script a été importé avec succès",
-            id: idToast,
-          });
-          router.refresh();
-        } catch (error) {
-          toast.error("Erreur", {
-            description: "Le fichier importé n'est pas valide.",
-            id: idToast,
-          });
-        } finally {
-          setIsAddItemDialogOpen(false);
-        }
-      };
-      reader.readAsText(file);
-    });
-
-    event.target.value = "";
+  const handleImportComplete = () => {
+    router.refresh();
   };
 
   const getCharacterColor = (characterId: string) => {
@@ -665,28 +490,10 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
             <DownloadIcon />
             Exporter
           </Button>
-          <div className="relative">
-            <Button variant="outline" disabled={isPending}>
-              {isPending ? (
-                <>
-                  <Loader2Icon className="animate-spin" />
-                  Importation...
-                </>
-              ) : (
-                <>
-                  <UploadIcon />
-                  Importer
-                </>
-              )}
-              <input 
-                type="file" 
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
-                accept=".json" 
-                onChange={importScript} 
-                disabled={isPending}
-              />
-            </Button>
-          </div>
+          <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
+            <UploadIcon />
+            Importer
+          </Button>
           <Link href={`/scripts/${scriptId}/apercu`} passHref>
             <Button variant="outline">
               <EyeIcon className="mr-2 h-4 w-4" />
@@ -762,6 +569,13 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId }: typ
           scriptId={scriptId}
         />
       )}
+
+      <ImportScriptDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        scriptId={scriptId}
+        onImportComplete={handleImportComplete}
+      />
     </div>
   );
 }
