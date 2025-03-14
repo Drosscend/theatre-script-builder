@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { Analytics } from "@vercel/analytics/react"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,6 +31,7 @@ export default function RootLayout({
       <body className={cn(geistSans.className, geistMono.className, "antialiased h-full flex flex-col")}>
         <main className="flex-1">{children}</main>
         <Toaster />
+        <Analytics />
       </body>
     </html>
   );
