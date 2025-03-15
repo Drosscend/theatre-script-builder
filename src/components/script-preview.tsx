@@ -169,10 +169,15 @@ export function ScriptPreview({ script, characters, scriptId, scriptName }: type
                         <iframe
                           width="100%"
                           height="315"
-                          src={item.sound.url.replace('youtube.com/watch?v=', 'youtube.com/embed/')}
+                          src={item.sound.url
+                            .replace("youtu.be/", "www.youtube.com/watch?v=")
+                            .replace("watch?v=", "embed/")
+                            .replace("youtube.com", "youtube-nocookie.com")
+                            .replace(/&t=(\d+)s/, "?amp;start=$1")
+                          }
                           title={item.sound.name}
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                          referrerPolicy="strict-origin-when-cross-origin"
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                           allowFullScreen
                         ></iframe>
                       </div>
