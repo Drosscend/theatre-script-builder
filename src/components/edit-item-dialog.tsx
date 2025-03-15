@@ -115,7 +115,16 @@ const EditItemDialog = memo(function EditItemDialog({
     setImagePreview(item.image?.url || "");
     setImageWidth(item.image?.width || 800);
     setImageHeight(item.image?.height || 600);
-  }, [item]);
+
+    // Check if this sound exists in existingSounds
+    if (item.sound?.url) {
+      const existingSound = existingSounds.find(s => s.url === item.sound?.url);
+      if (existingSound) {
+        setSelectedSound(existingSound.id);
+        setUseExistingSound(true);
+      }
+    }
+  }, [item, existingSounds]);
 
   /**
    * Handle selection of existing lighting
@@ -137,7 +146,10 @@ const EditItemDialog = memo(function EditItemDialog({
     if (sound) {
       setSoundUrl(sound.url);
       setSoundTimecode(sound.timecode);
-      setSoundDescription(sound.description || "");
+      if (sound.description) {
+        setSoundDescription(sound.description);
+      }
+      setSoundName(sound.url.split('/').pop() || '');
     }
     setSelectedSound(id);
   }, [existingSounds]);
@@ -483,61 +495,92 @@ const EditItemDialog = memo(function EditItemDialog({
           {itemType === "sound" && (
             <>
               <div className="space-y-4">
-                <Tabs value={soundType} onValueChange={(value) => setSoundType(value as "url" | "base64" | "youtube")}>
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="url">URL</TabsTrigger>
-                    <TabsTrigger value="youtube">YouTube</TabsTrigger>
-                    <TabsTrigger value="base64">Fichier</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="url">
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-sound-url">URL du son</Label>
-                      <Input
-                        id="edit-sound-url"
-                        value={soundUrl}
-                        onChange={(e) => setSoundUrl(e.target.value)}
-                        placeholder="https://example.com/sound.mp3"
-                      />
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="youtube">
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-sound-youtube">URL YouTube</Label>
-                      <Input
-                        id="edit-sound-youtube"
-                        value={soundUrl}
-                        onChange={(e) => setSoundUrl(e.target.value)}
-                        placeholder="https://www.youtube.com/watch?v=..."
-                      />
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="base64">
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-sound-base64">Sélectionner un fichier audio</Label>
-                      <Input
-                        id="edit-sound-base64"
-                        type="file"
-                        accept="audio/*"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="useExistingSound"
+                    checked={useExistingSound}
+                    onChange={(e) => setUseExistingSound(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <Label htmlFor="useExistingSound">Utiliser un son existant</Label>
+                </div>
 
-                          // Vérifier la taille du fichier (max 10MB)
-                          if (file.size > 10 * 1024 * 1024) {
-                            toast.error("Erreur", {
-                              description: "Le fichier ne doit pas dépasser 10MB",
-                            });
-                            return;
-                          }
-
-                          const base64 = await convertSoundToBase64(file);
-                          setSoundUrl(base64);
-                          setSoundName(file.name);
-                        }}
-                      />
+                {useExistingSound ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="selectedSound">Son existant</Label>
+                      <Select value={selectedSound} onValueChange={handleSelectSound}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un son existant" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {existingSounds.map((sound) => (
+                            <SelectItem key={sound.id} value={sound.id}>
+                              {sound.description || sound.url}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  </TabsContent>
-                </Tabs>
+                  </>
+                ) : (
+                  <Tabs value={soundType} onValueChange={(value) => setSoundType(value as "url" | "base64" | "youtube")}>
+                    <TabsList className="grid w-full grid-cols-3">
+                      <TabsTrigger value="url">URL</TabsTrigger>
+                      <TabsTrigger value="youtube">YouTube</TabsTrigger>
+                      <TabsTrigger value="base64">Fichier</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="url">
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-sound-url">URL du son</Label>
+                        <Input
+                          id="edit-sound-url"
+                          value={soundUrl}
+                          onChange={(e) => setSoundUrl(e.target.value)}
+                          placeholder="https://example.com/sound.mp3"
+                        />
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="youtube">
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-sound-youtube">URL YouTube</Label>
+                        <Input
+                          id="edit-sound-youtube"
+                          value={soundUrl}
+                          onChange={(e) => setSoundUrl(e.target.value)}
+                          placeholder="https://www.youtube.com/watch?v=..."
+                        />
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="base64">
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-sound-base64">Sélectionner un fichier audio</Label>
+                        <Input
+                          id="edit-sound-base64"
+                          type="file"
+                          accept="audio/*"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+
+                            // Vérifier la taille du fichier (max 10MB)
+                            if (file.size > 10 * 1024 * 1024) {
+                              toast.error("Erreur", {
+                                description: "Le fichier ne doit pas dépasser 10MB",
+                              });
+                              return;
+                            }
+
+                            const base64 = await convertSoundToBase64(file);
+                            setSoundUrl(base64);
+                            setSoundName(file.name);
+                          }}
+                        />
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="edit-sound-name">Nom du son</Label>
