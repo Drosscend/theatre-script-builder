@@ -20,6 +20,8 @@ export const LightingEffect = {
 
 export const SoundEffect = {
   url: "",
+  type: "url" as "url" | "base64" | "youtube",
+  name: "",
   timecode: "",
   description: "",
   isStop: false,
@@ -151,15 +153,63 @@ export function ScriptPreview({ script, characters, scriptId, scriptName }: type
                 </div>
               );
             } else if (item.type === "sound" && item.sound) {
+              const renderSoundContent = () => {
+                if (item.sound?.isStop) {
+                  return (
+                    <p className="text-sm">
+                      Arrêt de la musique: {item.sound.description || ""}
+                    </p>
+                  );
+                }
+
+                switch (item.sound?.type) {
+                  case "youtube":
+                    return (
+                      <div className="my-2">
+                        <iframe
+                          width="100%"
+                          height="315"
+                          src={item.sound.url.replace("watch?v=", "embed/")}
+                          title={item.sound.name}
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        ></iframe>
+                      </div>
+                    );
+                  case "url":
+                  case "base64":
+                    return (
+                      <div className="my-2">
+                        <audio controls className="w-full">
+                          <source src={item.sound.url} type="audio/mpeg" />
+                          Votre navigateur ne supporte pas la lecture audio.
+                        </audio>
+                      </div>
+                    );
+                  default:
+                    return (
+                      <a href={item.sound?.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                        {item.sound?.name || item.sound?.url}
+                      </a>
+                    );
+                }
+              };
+
               return (
                 <div key={item.id} className="mb-4 flex">
                   {lineNumber}
                   <div className="flex-1 p-2 bg-slate-100 dark:bg-slate-800 rounded">
                     <p className="text-sm font-semibold">SON:</p>
                     <p className="text-sm">
-                      {`${item.sound.description}`} ({`${item.sound.timecode}`})
+                      {item.sound.name} ({item.sound.timecode})
                     </p>
-                    <p className="text-xs text-blue-500 underline">{`${item.sound.url}`}</p>
+                    {item.sound.description && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {item.sound.description}
+                      </p>
+                    )}
+                    {renderSoundContent()}
                   </div>
                 </div>
               );

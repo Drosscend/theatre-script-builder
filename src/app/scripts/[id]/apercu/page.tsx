@@ -54,6 +54,8 @@ async function getScript(id: string) {
     if (item.sound) {
       transformedItem.sound = {
         url: item.sound.url,
+        type: item.sound.type as "url" | "base64" | "youtube",
+        name: item.sound.name,
         timecode: item.sound.timecode,
         description: item.sound.description || "",
         isStop: item.sound.isStop || false,

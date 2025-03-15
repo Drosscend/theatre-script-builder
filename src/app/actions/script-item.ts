@@ -13,6 +13,8 @@ const lightingSchema = z.object({
 
 const soundSchema = z.object({
   url: z.string(),
+  type: z.enum(["url", "base64", "youtube"]),
+  name: z.string(),
   timecode: z.string(),
   description: z.string().optional(),
   isStop: z.boolean().optional().default(false),

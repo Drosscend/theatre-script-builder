@@ -35,6 +35,8 @@ export const LightingEffect = {
 
 export const SoundEffect = {
   url: "",
+  type: "url" as "url" | "base64" | "youtube",
+  name: "",
   timecode: "",
   description: "",
   isStop: false,
@@ -175,7 +177,7 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId, scrip
           characterId?: string;
           text?: string;
           lighting?: { position: string; color: string; isOff?: boolean };
-          sound?: { url: string; timecode: string; description?: string; isStop?: boolean };
+          sound?: { url: string; timecode: string; description?: string; isStop?: boolean; type: "url" | "base64" | "youtube"; name: string };
           image?: { url: string; caption?: string; width?: number; height?: number; type: "url" | "base64" };
           staging?: { item: string; position: string; description?: string };
           movement?: { characterId: string; from: string; to: string; description?: string };
@@ -196,6 +198,8 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId, scrip
           sound: data.sound
             ? {
                 url: data.sound.url,
+                type: data.sound.type as "url" | "base64" | "youtube",
+                name: data.sound.name,
                 timecode: data.sound.timecode,
                 description: data.sound.description || "",
                 isStop: data.sound.isStop || false,
@@ -280,7 +284,7 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId, scrip
           characterId?: string;
           text?: string;
           lighting?: { position: string; color: string; isOff?: boolean };
-          sound?: { url: string; timecode: string; description?: string; isStop?: boolean };
+          sound?: { url: string; timecode: string; description?: string; isStop?: boolean; type: "url" | "base64" | "youtube"; name: string };
           image?: { url: string; caption?: string; width?: number; height?: number; type: "url" | "base64" };
           staging?: { item: string; position: string; description?: string };
           movement?: { characterId: string; from: string; to: string; description?: string };
@@ -301,6 +305,8 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId, scrip
           sound: data.sound
             ? {
                 url: data.sound.url,
+                type: data.sound.type as "url" | "base64" | "youtube",
+                name: data.sound.name,
                 timecode: data.sound.timecode,
                 description: data.sound.description || "",
                 isStop: data.sound.isStop || false,

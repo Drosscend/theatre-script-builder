@@ -203,9 +203,22 @@ export const ScriptPDFGenerator = memo(function ScriptPDFGenerator({ script, cha
                     <View style={pdfStyles.technicalBlock}>
                       <Text style={pdfStyles.technicalHeader}>SON:</Text>
                       <Text style={pdfStyles.technicalContent}>
-                        {item.sound.description} ({item.sound.timecode})
+                        {item.sound.name} ({item.sound.timecode})
                       </Text>
-                      <Text style={pdfStyles.technicalUrl}>{item.sound.url}</Text>
+                      {item.sound.description && (
+                        <Text style={[pdfStyles.technicalContent, { fontStyle: "italic" }]}>
+                          {item.sound.description}
+                        </Text>
+                      )}
+                      {item.sound.type === "url" && (
+                        <Text style={pdfStyles.technicalUrl}>{item.sound.url}</Text>
+                      )}
+                      {item.sound.type === "youtube" && (
+                        <Text style={pdfStyles.technicalUrl}>{item.sound.url}</Text>
+                      )}
+                      {item.sound.type === "base64" && (
+                        <Text style={pdfStyles.technicalContent}>Fichier audio: {item.sound.name}</Text>
+                      )}
                     </View>
                   )}
                   

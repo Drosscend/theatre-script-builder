@@ -54,6 +54,9 @@ const AddItemDialog = memo(function AddItemDialog({
   const [selectedLighting, setSelectedLighting] = useState<string>("");
   const [useExistingLighting, setUseExistingLighting] = useState<boolean>(false);
   const [soundUrl, setSoundUrl] = useState<string>("");
+  const [soundType, setSoundType] = useState<"url" | "base64" | "youtube">("url");
+  const [soundName, setSoundName] = useState<string>("");
+  const [soundFile, setSoundFile] = useState<File | null>(null);
   const [soundTimecode, setSoundTimecode] = useState<string>("");
   const [soundDescription, setSoundDescription] = useState<string>("");
   const [soundIsStop, setSoundIsStop] = useState<boolean>(false);
@@ -87,6 +90,9 @@ const AddItemDialog = memo(function AddItemDialog({
     setSelectedLighting("");
     setUseExistingLighting(false);
     setSoundUrl("");
+    setSoundType("url");
+    setSoundName("");
+    setSoundFile(null);
     setSoundTimecode("");
     setSoundDescription("");
     setSoundIsStop(false);
@@ -208,6 +214,20 @@ const AddItemDialog = memo(function AddItemDialog({
   }, [imageWidth, imageHeight]);
 
   /**
+   * Convert sound to base64
+   */
+  const convertSoundToBase64 = useCallback(async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        resolve(reader.result as string);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }, []);
+
+  /**
    * Handle form submission and create new script item
    */
   const handleSubmit = useCallback(async () => {
@@ -228,6 +248,8 @@ const AddItemDialog = memo(function AddItemDialog({
         itemType === "sound"
           ? {
               url: soundUrl,
+              type: soundType,
+              name: soundName,
               timecode: soundTimecode,
               description: soundDescription,
               isStop: soundIsStop,
@@ -265,7 +287,7 @@ const AddItemDialog = memo(function AddItemDialog({
     onAdd(newItem);
     resetForm();
     onOpenChange(false);
-  }, [itemType, character, text, lightPosition, lightColor, lightIsOff, soundUrl, soundTimecode, soundDescription, soundIsStop, imageUrl, imageCaption, imageType, imageFile, imageWidth, imageHeight, stagingItem, stagingPosition, stagingDescription, movementCharacter, movementFrom, movementTo, movementDescription, onAdd, resetForm, onOpenChange, convertImageToBase64]);
+  }, [itemType, character, text, lightPosition, lightColor, lightIsOff, soundUrl, soundType, soundName, soundTimecode, soundDescription, soundIsStop, imageUrl, imageCaption, imageType, imageFile, imageWidth, imageHeight, stagingItem, stagingPosition, stagingDescription, movementCharacter, movementFrom, movementTo, movementDescription, onAdd, resetForm, onOpenChange, convertImageToBase64, convertSoundToBase64]);
 
   /**
    * Check if the form is valid based on current item type
@@ -449,66 +471,91 @@ const AddItemDialog = memo(function AddItemDialog({
           {itemType === "sound" && (
             <>
               <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="useExistingSound"
-                    checked={useExistingSound}
-                    onChange={(e) => setUseExistingSound(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                  />
-                  <Label htmlFor="useExistingSound">Utiliser un son existant</Label>
-                </div>
-
-                {useExistingSound ? (
-                  <>
+                <Tabs value={soundType} onValueChange={(value) => setSoundType(value as "url" | "base64" | "youtube")}>
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="url">URL</TabsTrigger>
+                    <TabsTrigger value="youtube">YouTube</TabsTrigger>
+                    <TabsTrigger value="base64">Fichier</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="url">
                     <div className="space-y-2">
-                      <Label htmlFor="selectedSound">Son existant</Label>
-                      <Select value={selectedSound} onValueChange={handleSelectSound}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner un son existant" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {existingSounds.map((sound) => (
-                            <SelectItem key={sound.id} value={sound.id}>
-                              {sound.description || sound.url} - {sound.timecode}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="grid w-full items-center gap-1.5">
-                      <Label htmlFor="soundUrl">URL du son</Label>
+                      <Label htmlFor="sound-url">URL du son</Label>
                       <Input
-                        id="soundUrl"
-                        placeholder="URL du fichier audio"
+                        id="sound-url"
                         value={soundUrl}
                         onChange={(e) => setSoundUrl(e.target.value)}
+                        placeholder="https://example.com/sound.mp3"
                       />
                     </div>
-                    <div className="grid w-full items-center gap-1.5">
-                      <Label htmlFor="soundTimecode">Timecode</Label>
+                  </TabsContent>
+                  <TabsContent value="youtube">
+                    <div className="space-y-2">
+                      <Label htmlFor="sound-youtube">URL YouTube</Label>
                       <Input
-                        id="soundTimecode"
-                        placeholder="Timecode (ex: 00:01:30)"
-                        value={soundTimecode}
-                        onChange={(e) => setSoundTimecode(e.target.value)}
+                        id="sound-youtube"
+                        value={soundUrl}
+                        onChange={(e) => setSoundUrl(e.target.value)}
+                        placeholder="https://www.youtube.com/watch?v=..."
                       />
                     </div>
-                    <div className="grid w-full items-center gap-1.5">
-                      <Label htmlFor="soundDescription">Description</Label>
+                  </TabsContent>
+                  <TabsContent value="base64">
+                    <div className="space-y-2">
+                      <Label htmlFor="sound-base64">Sélectionner un fichier audio</Label>
                       <Input
-                        id="soundDescription"
-                        placeholder="Description du son"
-                        value={soundDescription}
-                        onChange={(e) => setSoundDescription(e.target.value)}
+                        id="sound-base64"
+                        type="file"
+                        accept="audio/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+
+                          // Vérifier la taille du fichier (max 10MB)
+                          if (file.size > 10 * 1024 * 1024) {
+                            toast.error("Erreur", {
+                              description: "Le fichier ne doit pas dépasser 10MB",
+                            });
+                            return;
+                          }
+
+                          const base64 = await convertSoundToBase64(file);
+                          setSoundUrl(base64);
+                          setSoundName(file.name);
+                        }}
                       />
                     </div>
-                  </>
-                )}
+                  </TabsContent>
+                </Tabs>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sound-name">Nom du son</Label>
+                  <Input
+                    id="sound-name"
+                    value={soundName}
+                    onChange={(e) => setSoundName(e.target.value)}
+                    placeholder="Nom ou titre de la musique"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sound-timecode">Timecode</Label>
+                  <Input
+                    id="sound-timecode"
+                    value={soundTimecode}
+                    onChange={(e) => setSoundTimecode(e.target.value)}
+                    placeholder="00:00:00"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sound-description">Description</Label>
+                  <Input
+                    id="sound-description"
+                    value={soundDescription}
+                    onChange={(e) => setSoundDescription(e.target.value)}
+                    placeholder="Description du son"
+                  />
+                </div>
 
                 <div className="flex items-center space-x-2">
                   <input

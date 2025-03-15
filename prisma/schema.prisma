@@ -60,6 +60,8 @@ model Lighting {
 model Sound {
   id          String     @id @default(cuid())
   url         String
+  type        String     // "url" | "base64" | "youtube"
+  name        String     // Nom du fichier ou titre de la musique
   timecode    String
   description String?
   isStop      Boolean    @default(false)
