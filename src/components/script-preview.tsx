@@ -169,12 +169,12 @@ export function ScriptPreview({ script, characters, scriptId, scriptName }: type
                         <iframe
                           width="100%"
                           height="315"
-                          src={item.sound.url.replace("watch?v=", "embed/")}
+                          src={item.sound.url}
                           title={item.sound.name}
-                          frameBorder="0"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          referrerPolicy="strict-origin-when-cross-origin"
                           allowFullScreen
-                        ></iframe>
+                          ></iframe>
                       </div>
                     );
                   case "url":
