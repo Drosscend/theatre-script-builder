@@ -1,19 +1,13 @@
 "use server";
 
-import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-
-// Schéma de validation
-const characterSchema = z.object({
-  realName: z.string().min(1, "Le nom réel est requis"),
-  stageName: z.string().min(1, "Le nom de scène est requis"),
-  role: z.string(),
-  color: z.string().regex(/^#[0-9A-F]{6}$/i, "Format de couleur invalide"),
-});
+import { characterSchema } from "@/lib/schema";
+import type { CharacterFormValues } from "@/lib/schema";
+import { z } from "zod";
 
 // Créer un nouveau personnage
-export async function createCharacter(scriptId: string, data: z.infer<typeof characterSchema>) {
+export async function createCharacter(scriptId: string, data: CharacterFormValues) {
   try {
     const validatedData = characterSchema.parse(data);
 
@@ -50,7 +44,7 @@ export async function getCharacters(scriptId: string) {
 }
 
 // Mettre à jour un personnage
-export async function updateCharacter(id: string, data: z.infer<typeof characterSchema>) {
+export async function updateCharacter(id: string, data: CharacterFormValues) {
   try {
     const validatedData = characterSchema.parse(data);
 

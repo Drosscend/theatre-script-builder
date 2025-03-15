@@ -7,9 +7,19 @@ import { useState, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Character } from "./script-editor";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { characterSchema, type CharacterFormValues } from "@/lib/schema";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
 interface CharactersDialogProps {
   open: boolean;
@@ -20,55 +30,46 @@ interface CharactersDialogProps {
 }
 
 const CharactersDialog = memo(function CharactersDialog({ open, onOpenChange, characters, setCharacters, scriptId }: CharactersDialogProps) {
-  const [newRealName, setNewRealName] = useState("");
-  const [newStageName, setNewStageName] = useState("");
-  const [newRole, setNewRole] = useState("");
-  const [newColor, setNewColor] = useState("#e2e8f0");
   const [isLoading, setIsLoading] = useState(false);
 
-  /**
-   * Add a new character to the list
-   */
-  const handleAddCharacter = useCallback(async () => {
-    if (newRealName && newStageName) {
-      setIsLoading(true);
-      try {
-        const result = await createCharacter(scriptId, {
-          realName: newRealName,
-          stageName: newStageName,
-          role: newRole,
-          color: newColor,
+  const form = useForm<CharacterFormValues>({
+    resolver: zodResolver(characterSchema),
+    defaultValues: {
+      realName: "",
+      stageName: "",
+      role: "",
+      color: "#e2e8f0",
+    },
+    mode: "onChange",
+  });
+
+  const onSubmit = useCallback(async (data: CharacterFormValues) => {
+    setIsLoading(true);
+    try {
+      const result = await createCharacter(scriptId, data);
+
+      if (result.success && result.data) {
+        setCharacters([...characters, result.data]);
+        toast("Personnage ajouté", {
+          description: "Le personnage a été ajouté avec succès",
         });
 
-        if (result.success && result.data) {
-          setCharacters([...characters, result.data]);
-          toast("Personnage ajouté", {
-            description: "Le personnage a été ajouté avec succès",
-          });
-
-          // Reset form
-          setNewRealName("");
-          setNewStageName("");
-          setNewRole("");
-          setNewColor("#e2e8f0");
-        } else {
-          toast.error("Erreur", {
-            description: "Une erreur est survenue lors de l'ajout du personnage",
-          });
-        }
-      } catch (error) {
+        // Reset form
+        form.reset();
+      } else {
         toast.error("Erreur", {
           description: "Une erreur est survenue lors de l'ajout du personnage",
         });
-      } finally {
-        setIsLoading(false);
       }
+    } catch (error) {
+      toast.error("Erreur", {
+        description: "Une erreur est survenue lors de l'ajout du personnage",
+      });
+    } finally {
+      setIsLoading(false);
     }
-  }, [newRealName, newStageName, newRole, newColor, scriptId, setCharacters, onOpenChange]);
+  }, [scriptId, setCharacters, form]);
 
-  /**
-   * Delete a character from the list
-   */
   const handleDeleteCharacter = useCallback(async (id: string) => {
     setIsLoading(true);
     try {
@@ -93,20 +94,14 @@ const CharactersDialog = memo(function CharactersDialog({ open, onOpenChange, ch
     }
   }, [setCharacters]);
 
-  /**
-   * Update an existing character property
-   */
   const handleUpdateCharacter = useCallback(async (id: string, field: keyof typeof Character, value: string) => {
-    // Mettre à jour localement pour une meilleure réactivité
     const updatedCharacters = characters.map((char) => (char.id === id ? { ...char, [field]: value } : char));
     setCharacters(updatedCharacters);
 
-    // Trouver le personnage mis à jour
     const updatedChar = updatedCharacters.find((char) => char.id === id);
     if (!updatedChar) return;
 
     try {
-      // Mettre à jour dans la base de données
       await updateCharacter(id, {
         realName: updatedChar.realName,
         stageName: updatedChar.stageName,
@@ -148,7 +143,11 @@ const CharactersDialog = memo(function CharactersDialog({ open, onOpenChange, ch
                         onChange={(e) => handleUpdateCharacter(char.id, "stageName", e.target.value)}
                         placeholder="Nom sur scène"
                       />
-                      <Input value={char.role} onChange={(e) => handleUpdateCharacter(char.id, "role", e.target.value)} placeholder="Rôle" />
+                      <Input 
+                        value={char.role} 
+                        onChange={(e) => handleUpdateCharacter(char.id, "role", e.target.value)} 
+                        placeholder="Rôle" 
+                      />
                       <Input
                         type="color"
                         value={char.color}
@@ -167,36 +166,72 @@ const CharactersDialog = memo(function CharactersDialog({ open, onOpenChange, ch
 
           <div className="space-y-4">
             <h3 className="text-sm font-medium">Ajouter un personnage</h3>
-            <div className="grid grid-cols-[1fr_1fr_1fr_80px] gap-2">
-              <div>
-                <Label htmlFor="real-name" className="sr-only">
-                  Nom réel
-                </Label>
-                <Input id="real-name" value={newRealName} onChange={(e) => setNewRealName(e.target.value)} placeholder="Nom réel" />
-              </div>
-              <div>
-                <Label htmlFor="stage-name" className="sr-only">
-                  Nom sur scène
-                </Label>
-                <Input id="stage-name" value={newStageName} onChange={(e) => setNewStageName(e.target.value)} placeholder="Nom sur scène" />
-              </div>
-              <div>
-                <Label htmlFor="role" className="sr-only">
-                  Rôle
-                </Label>
-                <Input id="role" value={newRole} onChange={(e) => setNewRole(e.target.value)} placeholder="Rôle" />
-              </div>
-              <div>
-                <Label htmlFor="color" className="sr-only">
-                  Couleur
-                </Label>
-                <Input id="color" type="color" value={newColor} onChange={(e) => setNewColor(e.target.value)} className="h-10 p-1" />
-              </div>
-            </div>
-            <Button onClick={handleAddCharacter} disabled={!newRealName || !newStageName || isLoading} className="w-full">
-              <PlusIcon />
-              Ajouter
-            </Button>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="grid grid-cols-[1fr_1fr_1fr_80px] gap-2">
+                  <FormField
+                    control={form.control}
+                    name="realName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="sr-only">Nom réel</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nom réel" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="stageName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="sr-only">Nom sur scène</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nom sur scène" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="role"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="sr-only">Rôle</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Rôle" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="color"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="sr-only">Couleur</FormLabel>
+                        <FormControl>
+                          <Input type="color" className="h-10 p-1" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <Button 
+                  type="submit" 
+                  disabled={isLoading || !form.formState.isValid} 
+                  className="w-full"
+                >
+                  <PlusIcon />
+                  Ajouter
+                </Button>
+              </form>
+            </Form>
           </div>
         </div>
 
