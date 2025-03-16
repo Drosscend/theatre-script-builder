@@ -52,7 +52,8 @@ export async function getScript(id: string) {
         characters: true,
         items: {
           include: {
-            character: true,
+            dialogue: true,
+            narration: true,
             lighting: true,
             sound: true,
             image: true,

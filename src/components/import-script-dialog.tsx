@@ -13,14 +13,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { createCharacter, deleteAllCharacters } from "@/app/actions/character";
-import { createBulkScriptItems, deleteAllScriptItems } from "@/app/actions/script-item";
+import { deleteAllCharacters } from "@/app/actions/character";
+import { deleteAllScriptItems, importScriptItems } from "@/app/actions/script-item";
+import { ScriptWithRelations } from "@/lib/types";
 
 interface ImportScriptDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   scriptId: string;
-  onImportComplete: () => void;
+  onImportComplete: (data: ScriptWithRelations) => void;
 }
 
 export function ImportScriptDialog({ open, onOpenChange, scriptId, onImportComplete }: ImportScriptDialogProps) {
@@ -38,92 +39,41 @@ export function ImportScriptDialog({ open, onOpenChange, scriptId, onImportCompl
       try {
         const content = e.target?.result as string;
         const parsed = JSON.parse(content);
-        
-        // Créer un mappage entre les anciens et nouveaux IDs de personnages
-        const characterIdMap = new Map<string, string>();
 
-        if (parsed.characters && Array.isArray(parsed.characters)) {
-          toast.loading("Suppression des personnages existants...", { id: idToast });
-          await deleteAllCharacters(scriptId);
-          toast.success("Suppression des personnages existants terminée", { id: idToast });
-
-          const createPromises = parsed.characters.map((char: any) => {
-            const { id, ...charData } = char;
-            return { oldId: id, promise: createCharacter(scriptId, charData) };
-          });
-          
-          toast.loading("Création des personnages...", { id: idToast });
-          const results = await Promise.all(createPromises.map((item: { promise: Promise<any>; oldId: string }) => item.promise));
-          
-          // Construire le mappage id ancien -> id nouveau
-          results.forEach((result, index) => {
-            if (result.success && result.data) {
-              const oldId = createPromises[index].oldId;
-              const newData = result.data as { id: string; realName: string; stageName: string; role: string; color: string };
-              characterIdMap.set(oldId, newData.id);
-            }
-          });
-          
-          toast.success("Création des personnages terminée", { id: idToast });
+        // Vérifier que le fichier a la bonne structure
+        if (!parsed.script || !Array.isArray(parsed.script) || !parsed.characters || !Array.isArray(parsed.characters)) {
+          throw new Error("Format de fichier invalide");
         }
 
-        toast.loading("Suppression des éléments existants...", { id: idToast });
-        await deleteAllScriptItems(scriptId);
-        toast.success("Suppression des éléments existants terminée", { id: idToast });
+        // Supprimer les éléments existants
+        toast.loading("Suppression des données existantes...", { id: idToast });
+        await Promise.all([
+          deleteAllCharacters(scriptId),
+          deleteAllScriptItems(scriptId)
+        ]);
+        toast.success("Suppression des données existantes terminée", { id: idToast });
 
-        if (parsed.script && Array.isArray(parsed.script)) {
-          toast.loading("Création des éléments...", { id: idToast });
-          
-          // Préparer tous les éléments avec les IDs mis à jour
-          const scriptItems = parsed.script.map((item: any) => {
-            const updatedCharacterId = item.character && characterIdMap.has(item.character) 
-              ? characterIdMap.get(item.character) 
-              : item.character;
-            
-            let updatedMovement = item.movement;
-            if (item.type === "movement" && item.movement?.characterId && characterIdMap.has(item.movement.characterId)) {
-              updatedMovement = {
-                ...item.movement,
-                characterId: characterIdMap.get(item.movement.characterId) || item.movement.characterId
-              };
-            }
+        // Importer les nouveaux éléments
+        toast.loading("Import des nouveaux éléments...", { id: idToast });
+        const result = await importScriptItems(scriptId, {
+          script: parsed.script,
+          characters: parsed.characters
+        });
 
-            return {
-              type: item.type,
-              text: item.text,
-              characterId: updatedCharacterId,
-              lighting: item.lighting,
-              sound: item.sound,
-              image: item.image,
-              staging: item.staging,
-              movement: updatedMovement 
-                ? {
-                    characterId: updatedMovement.characterId || "",
-                    from: updatedMovement.from || "",
-                    to: updatedMovement.to || "",
-                    description: updatedMovement.description,
-                  }
-                : undefined,
-            };
-          });
-
-          // Créer tous les éléments en une seule transaction
-          const result = await createBulkScriptItems(scriptId, scriptItems);
-          
-          if (!result.success) {
-            throw new Error(typeof result.error === 'string' ? result.error : 'Erreur de validation des données');
-          }
+        if (!result.success) {
+          throw new Error(typeof result.error === 'string' ? result.error : 'Erreur de validation des données');
         }
 
         toast.success("Import réussi", {
           description: "Le script a été importé avec succès",
           id: idToast,
         });
-        onImportComplete();
+        onImportComplete(result.data as ScriptWithRelations);
         onOpenChange(false);
       } catch (error) {
+        console.error('Import error:', error);
         toast.error("Erreur", {
-          description: "Le fichier importé n'est pas valide.",
+          description: error instanceof Error ? error.message : "Le fichier importé n'est pas valide.",
           id: idToast,
         });
       } finally {
@@ -147,12 +97,12 @@ export function ImportScriptDialog({ open, onOpenChange, scriptId, onImportCompl
             <Button variant="outline" disabled={isPending}>
               {isPending ? (
                 <>
-                  <Loader2Icon className="animate-spin" />
+                  <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
                   Importation en cours...
                 </>
               ) : (
                 <>
-                  <UploadIcon />
+                  <UploadIcon className="mr-2 h-4 w-4" />
                   Sélectionner un fichier
                 </>
               )}

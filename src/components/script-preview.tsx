@@ -3,84 +3,17 @@ import { Button } from "./ui/button";
 import Link from "next/link";
 import { ArrowLeftIcon } from "lucide-react";
 import { ScriptPDFGenerator } from "./script-pdf-generator";
-
-export const Character = {
-  id: "",
-  realName: "",
-  stageName: "",
-  role: "",
-  color: "",
-};
-
-export const LightingEffect = {
-  position: "",
-  color: "",
-  isOff: false,
-};
-
-export const SoundEffect = {
-  url: "",
-  type: "url" as "url" | "base64" | "youtube",
-  name: "",
-  timecode: "",
-  description: "",
-  isStop: false,
-};
-
-export const ScriptItemType = {
-  id: "",
-  type: "dialogue" as "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement",
-  character: undefined as string | undefined,
-  text: undefined as string | undefined,
-  lighting: undefined as typeof LightingEffect | undefined,
-  sound: undefined as typeof SoundEffect | undefined,
-  image: undefined as
-    | {
-        url: string;
-        caption?: string;
-        width?: number;
-        height?: number;
-        type: "url" | "base64";
-      }
-    | undefined,
-  staging: undefined as
-    | {
-        item: string;
-        position: string;
-        description?: string;
-      }
-    | undefined,
-  movement: undefined as
-    | {
-        characterId: string;
-        from: string;
-        to: string;
-        description?: string;
-      }
-    | undefined,
-};
+import { ScriptWithRelations } from "@/lib/types";
 
 export const ScriptPreviewProps = {
-  script: [] as Array<
-    typeof ScriptItemType & {
-      id: string;
-      type: "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement";
-    }
-  >,
-  characters: [] as Array<
-    typeof Character & {
-      id: string;
-      realName: string;
-      stageName: string;
-      role: string;
-      color: string;
-    }
-  >,
+  script: {} as ScriptWithRelations,
   scriptId: "",
   scriptName: "",
 };
 
-export function ScriptPreview({ script, characters, scriptId, scriptName }: typeof ScriptPreviewProps) {
+export function ScriptPreview({ script, scriptId, scriptName }: typeof ScriptPreviewProps) {
+  const characters = script.characters;
+  
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -92,40 +25,43 @@ export function ScriptPreview({ script, characters, scriptId, scriptName }: type
               Retour à l'éditeur
             </Button>
           </Link>
-          <ScriptPDFGenerator script={script} characters={characters} />
+          <ScriptPDFGenerator script={script} />
         </div>
       </div>
       <Card className="p-6">
         <h2 className="text-xl font-semibold mb-4">Aperçu du script</h2>
         <div className="prose max-w-none">
-          {script.map((item, index) => {
-            const character = item.character ? characters.find((c) => c.id === item.character) : null;
+          {script.items.map((item, index) => {
+            const itemType = item.type;
+
             const lineNumber = (
               <div className="text-sm text-gray-400 w-8 flex-shrink-0 select-none">
                 {(index + 1).toString().padStart(2, '0')}
               </div>
             );
 
-            if (item.type === "dialogue" && character) {
-              const processedText = item.text;
+            if (itemType === "dialogue" && item.dialogue) {
+              const processedText = item.dialogue.text;
+              const character = characters.find((c) => c.id === item.dialogue?.characterId);
 
               return (
                 <div key={item.id} className="mb-4 flex">
                   {lineNumber}
                   <div className="flex-1">
-                    <p className="font-bold" style={{ color: character.color }}>
-                      {`${character.stageName} (${character.realName}):`}
+                    <p className="font-bold" style={{ color: character?.color || "#000000" }}>
+                      {`${character?.stageName} (${character?.realName}):`}
                     </p>
                     <p className="ml-8">{processedText}</p>
                   </div>
                 </div>
               );
-            } else if (item.type === "narration") {
-              const processedText = item.text;
+            } else if (itemType === "narration" && item.narration) {
+              const processedText = item.narration.text;
+              const narrator = characters.find((c) => c.id === item.narration?.characterId);
 
-              const narratorPrefix = character ? (
-                <span className="font-bold" style={{ color: character.color }}>
-                  {`${character.stageName} (${character.realName}): `}
+              const narratorPrefix = narrator ? (
+                <span className="font-bold" style={{ color: narrator.color }}>
+                  {`${narrator.stageName} (${narrator.realName}): `}
                 </span>
               ) : null;
 
@@ -138,7 +74,7 @@ export function ScriptPreview({ script, characters, scriptId, scriptName }: type
                   </div>
                 </div>
               );
-            } else if (item.type === "lighting" && item.lighting) {
+            } else if (itemType === "lighting" && item.lighting) {
               return (
                 <div key={item.id} className="mb-4 flex">
                   {lineNumber}

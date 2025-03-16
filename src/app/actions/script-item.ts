@@ -3,57 +3,11 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { scriptItemSchema, type ScriptItemFormValues } from "@/lib/schema";
+import { type ScriptItemWithRelations } from "@/lib/types";
+import { Character } from "@prisma/client";
 
-// Schémas de validation
-const lightingSchema = z.object({
-  position: z.string(),
-  color: z.string(),
-  isOff: z.boolean().optional().default(false),
-});
-
-const soundSchema = z.object({
-  url: z.string(),
-  type: z.enum(["url", "base64", "youtube"]),
-  name: z.string(),
-  timecode: z.string(),
-  description: z.string().optional(),
-  isStop: z.boolean().optional().default(false),
-});
-
-const imageSchema = z.object({
-  url: z.string(),
-  width: z.number().optional(),
-  height: z.number().optional(),
-  type: z.enum(["url", "base64"]),
-  caption: z.string().optional(),
-});
-
-const stagingSchema = z.object({
-  item: z.string(),
-  position: z.string(),
-  description: z.string().optional(),
-});
-
-const movementSchema = z.object({
-  characterId: z.string(),
-  from: z.string(),
-  to: z.string(),
-  description: z.string().optional(),
-});
-
-const scriptItemSchema = z.object({
-  type: z.enum(["dialogue", "narration", "lighting", "sound", "image", "staging", "movement"]),
-  text: z.string().optional(),
-  characterId: z.string().optional(),
-  lighting: lightingSchema.optional(),
-  sound: soundSchema.optional(),
-  image: imageSchema.optional(),
-  staging: stagingSchema.optional(),
-  movement: movementSchema.optional(),
-});
-
-// Créer un nouvel élément de script
-export async function createScriptItem(scriptId: string, data: z.infer<typeof scriptItemSchema>, position?: number) {
+export async function createScriptItem(scriptId: string, data: ScriptItemFormValues, position?: number) {
   try {
     const validatedData = scriptItemSchema.parse(data);
 
@@ -75,63 +29,105 @@ export async function createScriptItem(scriptId: string, data: z.infer<typeof sc
       const scriptItem = await tx.scriptItem.create({
         data: {
           type: validatedData.type,
-          text: validatedData.text,
-          characterId: validatedData.characterId,
           position: itemPosition,
           scriptId,
         },
       });
 
       // Créer les relations spécifiques au type
-      if (validatedData.lighting && validatedData.type === "lighting") {
+      if (validatedData.type === "narration") {
+        await tx.narration.create({
+          data: {
+            text: validatedData.text || "",
+            characterId: validatedData.character || "",
+            scriptItemId: scriptItem.id,
+          },
+        });
+      }
+
+      if (validatedData.type === "dialogue") {
+        await tx.dialogue.create({
+          data: {
+            text: validatedData.text || "",
+            characterId: validatedData.character || "",
+            scriptItemId: scriptItem.id,
+          },
+        });
+      }
+
+      if (validatedData.type === "lighting") {
         await tx.lighting.create({
           data: {
-            ...validatedData.lighting,
+            color: validatedData.lightColor || "",
+            position: validatedData.lightPosition || "",
             scriptItemId: scriptItem.id,
           },
         });
       }
 
-      if (validatedData.sound && validatedData.type === "sound") {
+      if (validatedData.type === "sound") {
         await tx.sound.create({
           data: {
-            ...validatedData.sound,
+            type: validatedData.soundType || "",
+            name: validatedData.soundName || "",
+            url: validatedData.soundUrl || "",
+            timecode: validatedData.soundTimecode || "",
+            description: validatedData.soundDescription || "",
             scriptItemId: scriptItem.id,
           },
         });
       }
 
-      if (validatedData.image && validatedData.type === "image") {
+      if (validatedData.type === "image") {
         await tx.image.create({
           data: {
-            ...validatedData.image,
+            type: validatedData.imageType || "",
+            url: validatedData.imageUrl || "",
+            width: validatedData.imageWidth || 0,
+            height: validatedData.imageHeight || 0,
+            caption: validatedData.imageCaption || "",
             scriptItemId: scriptItem.id,
           },
         });
       }
 
-      if (validatedData.staging && validatedData.type === "staging") {
+      if (validatedData.type === "staging") {
         await tx.staging.create({
           data: {
-            ...validatedData.staging,
+            item: validatedData.stagingItem || "",
+            position: validatedData.stagingPosition || "",
+            description: validatedData.stagingDescription || "",
             scriptItemId: scriptItem.id,
           },
         });
       }
 
-      if (validatedData.movement && validatedData.type === "movement") {
+      if (validatedData.type === "movement") {
         await tx.movement.create({
           data: {
-            from: validatedData.movement.from,
-            to: validatedData.movement.to,
-            description: validatedData.movement.description,
-            characterId: validatedData.movement.characterId,
+            characterId: validatedData.movementCharacter || "",
+            from: validatedData.movementFrom || "",
+            to: validatedData.movementTo || "",
+            description: validatedData.movementDescription || "",
             scriptItemId: scriptItem.id,
           },
         });
       }
 
-      return scriptItem;
+      const scriptItemWithRelations = await tx.scriptItem.findUnique({
+        where: { id: scriptItem.id },
+        include: {
+          narration: true,
+          dialogue: true,
+          image: true,
+          lighting: true,
+          sound: true,
+          staging: true,
+          movement: true,
+        },
+      });
+
+      return scriptItemWithRelations;
     });
 
     revalidatePath(`/scripts/${scriptId}`);
@@ -142,98 +138,6 @@ export async function createScriptItem(scriptId: string, data: z.infer<typeof sc
       return { success: false, error: error.errors };
     }
     return { success: false, error: "Une erreur est survenue lors de la création de l'élément" };
-  }
-}
-
-// Créer plusieurs éléments de script en une seule opération
-export async function createBulkScriptItems(scriptId: string, items: z.infer<typeof scriptItemSchema>[]) {
-  try {
-    // Valider toutes les données avant de commencer
-    const validatedItems = items.map(item => scriptItemSchema.parse(item));
-
-    // Préparer les données pour la création en masse
-    const scriptItemsData = validatedItems.map((item, index) => ({
-      type: item.type,
-      text: item.text,
-      characterId: item.characterId,
-      position: index,
-      scriptId,
-    }));
-
-    // Créer tous les éléments de base en une seule opération
-    await prisma.scriptItem.createMany({
-      data: scriptItemsData,
-    });
-
-    // Récupérer les éléments créés avec leurs IDs
-    const createdItems = await prisma.scriptItem.findMany({
-      where: { scriptId },
-      orderBy: { position: 'asc' },
-    });
-
-    // Créer les relations pour chaque type
-    for (let i = 0; i < createdItems.length; i++) {
-      const scriptItem = createdItems[i];
-      const validatedData = validatedItems[i];
-
-      if (validatedData.lighting && validatedData.type === "lighting") {
-        await prisma.lighting.create({
-          data: {
-            ...validatedData.lighting,
-            scriptItemId: scriptItem.id,
-          },
-        });
-      }
-
-      if (validatedData.sound && validatedData.type === "sound") {
-        await prisma.sound.create({
-          data: {
-            ...validatedData.sound,
-            scriptItemId: scriptItem.id,
-          },
-        });
-      }
-
-      if (validatedData.image && validatedData.type === "image") {
-        await prisma.image.create({
-          data: {
-            ...validatedData.image,
-            scriptItemId: scriptItem.id,
-          },
-        });
-      }
-
-      if (validatedData.staging && validatedData.type === "staging") {
-        await prisma.staging.create({
-          data: {
-            ...validatedData.staging,
-            scriptItemId: scriptItem.id,
-          },
-        });
-      }
-
-      if (validatedData.movement && validatedData.type === "movement") {
-        await prisma.movement.create({
-          data: {
-            from: validatedData.movement.from,
-            to: validatedData.movement.to,
-            description: validatedData.movement.description,
-            characterId: validatedData.movement.characterId,
-            scriptItemId: scriptItem.id,
-          },
-        });
-      }
-    }
-
-    revalidatePath(`/scripts/${scriptId}`);
-    revalidatePath(`/scripts/${scriptId}/apercu`);
-    return { success: true, data: createdItems };
-  } catch (error) {
-    console.error(error);
-    if (error instanceof z.ZodError) {
-      return { success: false, error: error.errors };
-    }
-    return { success: false, error: "Une erreur est survenue lors de la création des éléments" };
   }
 }
 
@@ -258,8 +162,6 @@ export async function updateScriptItem(id: string, data: z.infer<typeof scriptIt
         where: { id },
         data: {
           type: validatedData.type,
-          text: validatedData.text,
-          characterId: validatedData.characterId,
         },
       });
 
@@ -285,73 +187,104 @@ export async function updateScriptItem(id: string, data: z.infer<typeof scriptIt
       }
 
       // Mettre à jour ou créer les relations spécifiques au type
-      if (validatedData.lighting && validatedData.type === "lighting") {
-        await tx.lighting.upsert({
+      if (validatedData.type === "dialogue") {  
+        await tx.dialogue.update({
           where: { scriptItemId: id },
-          update: validatedData.lighting,
-          create: {
-            ...validatedData.lighting,
-            scriptItemId: id,
+          data: {
+            text: validatedData.text || "",
+            characterId: validatedData.character || ""
           },
         });
       }
 
-      if (validatedData.sound && validatedData.type === "sound") {
-        await tx.sound.upsert({
+      if (validatedData.type === "narration") {
+        await tx.narration.update({
           where: { scriptItemId: id },
-          update: validatedData.sound,
-          create: {
-            ...validatedData.sound,
-            scriptItemId: id,
+          data: { 
+            text: validatedData.text || "",
+            characterId: validatedData.character || ""
+           },
+        });
+      }
+      
+      if (validatedData.type === "lighting") {
+        await tx.lighting.update({
+          where: { scriptItemId: id },
+          data: {
+            color: validatedData.lightColor || "",
+            position: validatedData.lightPosition || "",
+            isOff: validatedData.lightIsOff || false
           },
         });
       }
 
-      if (validatedData.image && validatedData.type === "image") {
-        await tx.image.upsert({
+      if (validatedData.type === "sound") {
+        await tx.sound.update({
           where: { scriptItemId: id },
-          update: validatedData.image,
-          create: {
-            ...validatedData.image,
-            scriptItemId: id,
+          data: {
+            type: validatedData.soundType || "",
+            name: validatedData.soundName || "",
+            url: validatedData.soundUrl || "",
+            timecode: validatedData.soundTimecode || "",
+            description: validatedData.soundDescription || "",
+            isStop: validatedData.soundIsStop || false,
           },
         });
       }
 
-      if (validatedData.staging && validatedData.type === "staging") {
-        await tx.staging.upsert({
+      if (validatedData.type === "image") {
+        await tx.image.update({
           where: { scriptItemId: id },
-          update: validatedData.staging,
-          create: {
-            ...validatedData.staging,
-            scriptItemId: id,
+          data: {
+            type: validatedData.imageType || "",
+            url: validatedData.imageUrl || "",
+            width: validatedData.imageWidth || 0,
+            height: validatedData.imageHeight || 0,
+            caption: validatedData.imageCaption || ""
           },
         });
       }
 
-      if (validatedData.movement && validatedData.type === "movement") {
-        await tx.movement.upsert({
+      if (validatedData.type === "staging") {
+        await tx.staging.update({
           where: { scriptItemId: id },
-          update: {
-            from: validatedData.movement.from,
-            to: validatedData.movement.to,
-            description: validatedData.movement.description,
-            characterId: validatedData.movement.characterId,
+          data: {
+            item: validatedData.stagingItem || "",
+            position: validatedData.stagingPosition || "",
+            description: validatedData.stagingDescription || ""
           },
-          create: {
-            from: validatedData.movement.from,
-            to: validatedData.movement.to,
-            description: validatedData.movement.description,
-            characterId: validatedData.movement.characterId,
-            scriptItemId: id,
+        });
+      }
+
+      if (validatedData.type === "movement") {
+        await tx.movement.update({
+          where: { scriptItemId: id },
+          data: {
+            from: validatedData.movementFrom || "",
+            to: validatedData.movementTo || "",
+            description: validatedData.movementDescription || "",
+            characterId: validatedData.movementCharacter || ""
           },
         });
       }
     });
 
+    const scriptItemWithRelations = await prisma.scriptItem.findUnique({
+      where: { id },
+      include: {
+        narration: true,
+        dialogue: true,
+        image: true,
+        lighting: true,
+        sound: true,
+        staging: true,
+        movement: true,
+      },
+    });
+
     revalidatePath(`/scripts/${scriptItem.scriptId}`);
     revalidatePath(`/scripts/${scriptItem.scriptId}/apercu`);
-    return { success: true };
+    return { success: true, data: scriptItemWithRelations };
   } catch (error) {
     if (error instanceof z.ZodError) {
       return { success: false, error: error.errors };
@@ -420,5 +353,165 @@ export async function reorderScriptItems(scriptId: string, itemIds: string[]) {
     return { success: true };
   } catch (error) {
     return { success: false, error: "Une erreur est survenue lors de la réorganisation des éléments" };
+  }
+}
+
+// Importer des éléments de script depuis un fichier JSON
+export async function importScriptItems(scriptId: string, importData: { script: ScriptItemWithRelations[], characters: Character[] }) {
+  try {
+    // Créer un mapping des anciens vers les nouveaux IDs de personnages
+    const characterMapping = new Map<string, string>();
+    
+    // Créer les nouveaux personnages et stocker le mapping des IDs
+    for (const character of importData.characters) {
+      const newCharacter = await prisma.character.create({
+        data: {
+          realName: character.realName,
+          stageName: character.stageName,
+          role: character.role,
+          color: character.color,
+          scriptId: scriptId
+        }
+      });
+      characterMapping.set(character.id, newCharacter.id);
+    }
+
+    // Créer les nouveaux éléments de script avec leurs relations
+    const scriptItemsData = importData.script.map((item, index) => {
+      const baseItem = {
+        type: item.type,
+        position: index,
+        scriptId,
+      };
+
+      let relationData = {};
+
+      if (item.dialogue) {
+        relationData = {
+          dialogue: {
+            create: {
+              text: item.dialogue.text || "",
+              characterId: item.dialogue.characterId ? characterMapping.get(item.dialogue.characterId) || "" : "",
+            }
+          }
+        };
+      }
+
+      if (item.narration) {
+        relationData = {
+          narration: {
+            create: {
+              text: item.narration.text || "",
+              characterId: item.narration.characterId ? characterMapping.get(item.narration.characterId) || "" : "",
+            }
+          }
+        };
+      }
+
+      if (item.lighting) {
+        relationData = {
+          lighting: {
+            create: {
+              color: item.lighting.color,
+              position: item.lighting.position,
+              isOff: item.lighting.isOff || false,
+            }
+          }
+        };
+      }
+
+      if (item.sound) {
+        relationData = {
+          sound: {
+            create: {
+              type: item.sound.type,
+              name: item.sound.name,
+              url: item.sound.url,
+              timecode: item.sound.timecode,
+              description: item.sound.description,
+              isStop: item.sound.isStop || false,
+            }
+          }
+        };
+      }
+
+      if (item.image) {
+        relationData = {
+          image: {
+            create: {
+              type: item.image.type,
+              url: item.image.url,
+              width: item.image.width,
+              height: item.image.height,
+              caption: item.image.caption,
+            }
+          }
+        };
+      }
+
+      if (item.staging) {
+        relationData = {
+          staging: {
+            create: {
+              item: item.staging.item,
+              position: item.staging.position,
+              description: item.staging.description,
+            }
+          }
+        };
+      }
+
+      if (item.movement) {
+        relationData = {
+          movement: {
+            create: {
+              from: item.movement.from,
+              to: item.movement.to,
+              description: item.movement.description,
+              characterId: characterMapping.get(item.movement.characterId) || "",
+            }
+          }
+        };
+      }
+
+      return {
+        data: {
+          ...baseItem,
+          ...relationData
+        }
+      };
+    });
+
+    // Créer tous les éléments en utilisant des transactions
+    await prisma.$transaction(
+      scriptItemsData.map(itemData => 
+        prisma.scriptItem.create(itemData)
+      )
+    );
+
+    const scriptWithRelations = await prisma.script.findUnique({
+      where: { id: scriptId },
+      include: {
+        items: {
+          include: {
+            narration: true,
+            dialogue: true,
+            image: true,
+            lighting: true,
+            sound: true,
+            staging: true,
+            movement: true,
+          },
+          orderBy: { position: 'asc' },
+        },
+      },
+    });
+
+    revalidatePath(`/scripts/${scriptId}`);
+    revalidatePath(`/scripts/${scriptId}/apercu`);
+    return { success: true, data: scriptWithRelations };
+  } catch (error) {
+    console.error('Import error:', error);
+    return { success: false, error: "Une erreur est survenue lors de l'importation des éléments" };
   }
 }

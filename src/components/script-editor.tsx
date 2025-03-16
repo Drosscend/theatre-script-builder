@@ -8,7 +8,7 @@ import { DownloadIcon, PlusIcon, Trash2Icon, UploadIcon, UsersIcon, Loader2Icon,
 import { toast } from "sonner";
 import React from "react";
 import { useState, useTransition } from "react";
-import AddItemDialog from "@/components/add-item-dialog";
+import { AddItemDialog } from "@/components/add-item-dialog";
 import CharactersDialog from "@/components/characters-dialog";
 import ScriptItem from "@/components/script-item";
 import { ScriptPDFGenerator } from "@/components/script-pdf-generator";
@@ -18,103 +18,20 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ImportScriptDialog } from "@/components/import-script-dialog";
 import { DeleteScriptButton } from "./delete-script-button";
+import { type ScriptItem as ScriptItemType } from "@/lib/schema";
+import { Character } from "@prisma/client";
+import type { ScriptItemWithRelations, ScriptWithRelations } from "@/lib/types";
 
-export const Character = {
-  id: "",
-  realName: "",
-  stageName: "",
-  role: "",
-  color: "",
-};
 
-export const LightingEffect = {
-  position: "",
-  color: "",
-  isOff: false,
-};
+interface ScriptEditorProps {
+  initialScript: ScriptWithRelations;
+  scriptId: string;
+  scriptName: string;
+}
 
-export const SoundEffect = {
-  url: "",
-  type: "url" as "url" | "base64" | "youtube",
-  name: "",
-  timecode: "",
-  description: "",
-  isStop: false,
-};
-
-export const ScriptItemType = {
-  id: "",
-  type: "dialogue" as "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement",
-  character: undefined as string | undefined,
-  text: undefined as string | undefined,
-  lighting: undefined as typeof LightingEffect | undefined,
-  sound: undefined as typeof SoundEffect | undefined,
-  image: undefined as
-    | {
-        url: string;
-        caption?: string;
-        width?: number;
-        height?: number;
-        type: "url" | "base64";
-      }
-    | undefined,
-  staging: undefined as
-    | {
-        item: string;
-        position: string;
-        description?: string;
-      }
-    | undefined,
-  movement: undefined as
-    | {
-        characterId: string;
-        from: string;
-        to: string;
-        description?: string;
-      }
-    | undefined,
-};
-
-export const ScriptEditorProps = {
-  initialScript: [] as Array<
-    typeof ScriptItemType & {
-      id: string;
-      type: "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement";
-    }
-  >,
-  initialCharacters: [] as Array<
-    typeof Character & {
-      id: string;
-      realName: string;
-      stageName: string;
-      role: string;
-      color: string;
-    }
-  >,
-  scriptId: "",
-  scriptName: "",
-};
-
-export function ScriptEditor({ initialScript, initialCharacters, scriptId, scriptName }: typeof ScriptEditorProps) {
-  const [script, setScript] = useState<
-    Array<
-      typeof ScriptItemType & {
-        id: string;
-        type: "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement";
-      }
-    >
-  >(initialScript);
-  const [characters, setCharacters] = useState<
-    Array<
-      typeof Character & {
-        id: string;
-        realName: string;
-        stageName: string;
-        role: string;
-        color: string;
-      }
-    >
-  >(initialCharacters);
+export function ScriptEditor({ initialScript, scriptId, scriptName }: ScriptEditorProps) {
+  const [script, setScript] = useState<ScriptItemWithRelations[]>(initialScript.items);
+  const [characters, setCharacters] = useState<Character[]>(initialScript.characters);
   const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
   const [isCharactersDialogOpen, setIsCharactersDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -149,89 +66,12 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId, scrip
       }));
   };
 
-  const handleAddItem = async (item: typeof ScriptItemType) => {
+  const handleAddItem = async (item: ScriptItemType) => {
     try {
-      const result = await createScriptItem(scriptId, {
-        type: item.type,
-        text: item.text,
-        characterId: item.character,
-        lighting: item.lighting,
-        sound: item.sound,
-        image: item.image,
-        staging: item.staging,
-        movement:
-          item.type === "movement"
-            ? {
-                characterId: item.movement?.characterId || "",
-                from: item.movement?.from || "",
-                to: item.movement?.to || "",
-                description: item.movement?.description,
-              }
-            : undefined,
-      });
+      const result = await createScriptItem(scriptId, item);
 
       if (result.success && result.data) {
-        const data = result.data as {
-          id: string;
-          type: string;
-          characterId?: string;
-          text?: string;
-          lighting?: { position: string; color: string; isOff?: boolean };
-          sound?: { url: string; timecode: string; description?: string; isStop?: boolean; type: "url" | "base64" | "youtube"; name: string };
-          image?: { url: string; caption?: string; width?: number; height?: number; type: "url" | "base64" };
-          staging?: { item: string; position: string; description?: string };
-          movement?: { characterId: string; from: string; to: string; description?: string };
-        };
-
-        const newItem = {
-          id: data.id,
-          type: data.type as "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement",
-          character: data.characterId || undefined,
-          text: data.text || undefined,
-          lighting: data.lighting
-            ? {
-                position: data.lighting.position,
-                color: data.lighting.color,
-                isOff: data.lighting.isOff || false,
-              }
-            : undefined,
-          sound: data.sound
-            ? {
-                url: data.sound.url,
-                type: data.sound.type as "url" | "base64" | "youtube",
-                name: data.sound.name,
-                timecode: data.sound.timecode,
-                description: data.sound.description || "",
-                isStop: data.sound.isStop || false,
-              }
-            : undefined,
-          image: data.image
-            ? {
-                url: data.image.url,
-                caption: data.image.caption || "",
-                width: data.image.width,
-                height: data.image.height,
-                type: data.image.type || "url",
-              }
-            : undefined,
-          staging: data.staging
-            ? {
-                item: data.staging.item,
-                position: data.staging.position,
-                description: data.staging.description || "",
-              }
-            : undefined,
-          movement: data.movement
-            ? {
-                characterId: data.movement.characterId,
-                from: data.movement.from,
-                to: data.movement.to,
-                description: data.movement.description || "",
-              }
-            : undefined,
-        };
-
-        setScript(prevScript => [...prevScript, newItem]);
+        setScript(prevScript => [...prevScript, result.data as ScriptItemWithRelations]);
         
         toast("Élément ajouté", {
           description: "L'élément a été ajouté avec succès",
@@ -247,7 +87,7 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId, scrip
     }
   };
 
-  const handleAddItemAtPosition = async (item: typeof ScriptItemType, targetId: string, position: "before" | "after") => {
+  const handleAddItemAtPosition = async (item: ScriptItemType, targetId: string, position: "before" | "after") => {
     const targetIndex = script.findIndex((item) => item.id === targetId);
     if (targetIndex === -1) return;
 
@@ -256,91 +96,14 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId, scrip
 
       const result = await createScriptItem(
         scriptId,
-        {
-          type: item.type,
-          text: item.text,
-          characterId: item.character,
-          lighting: item.lighting,
-          sound: item.sound,
-          image: item.image,
-          staging: item.staging,
-          movement:
-            item.type === "movement"
-              ? {
-                  characterId: item.movement?.characterId || "",
-                  from: item.movement?.from || "",
-                  to: item.movement?.to || "",
-                  description: item.movement?.description,
-                }
-              : undefined,
-        },
+        item,
         newIndex
       );
 
-      if (result.success && result.data) {
-        const data = result.data as {
-          id: string;
-          type: string;
-          characterId?: string;
-          text?: string;
-          lighting?: { position: string; color: string; isOff?: boolean };
-          sound?: { url: string; timecode: string; description?: string; isStop?: boolean; type: "url" | "base64" | "youtube"; name: string };
-          image?: { url: string; caption?: string; width?: number; height?: number; type: "url" | "base64" };
-          staging?: { item: string; position: string; description?: string };
-          movement?: { characterId: string; from: string; to: string; description?: string };
-        };
-        
-        const newItem = {
-          id: data.id,
-          type: data.type as "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement",
-          character: data.characterId || undefined,
-          text: data.text || undefined,
-          lighting: data.lighting
-            ? {
-                position: data.lighting.position,
-                color: data.lighting.color,
-                isOff: data.lighting.isOff || false,
-              }
-            : undefined,
-          sound: data.sound
-            ? {
-                url: data.sound.url,
-                type: data.sound.type as "url" | "base64" | "youtube",
-                name: data.sound.name,
-                timecode: data.sound.timecode,
-                description: data.sound.description || "",
-                isStop: data.sound.isStop || false,
-              }
-            : undefined,
-          image: data.image
-            ? {
-                url: data.image.url,
-                caption: data.image.caption || "",
-                width: data.image.width,
-                height: data.image.height,
-                type: data.image.type || "url",
-              }
-            : undefined,
-          staging: data.staging
-            ? {
-                item: data.staging.item,
-                position: data.staging.position,
-                description: data.staging.description || "",
-              }
-            : undefined,
-          movement: data.movement
-            ? {
-                characterId: data.movement.characterId,
-                from: data.movement.from,
-                to: data.movement.to,
-                description: data.movement.description || "",
-              }
-            : undefined,
-        };
-
+      if (result.success && result.data) {  
         setScript(prevScript => {
           const newScript = [...prevScript];
-          newScript.splice(position === "after" ? targetIndex + 1 : targetIndex, 0, newItem);
+          newScript.splice(position === "after" ? targetIndex + 1 : targetIndex, 0, result.data as ScriptItemWithRelations);
           return newScript;
         });
 
@@ -357,29 +120,11 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId, scrip
     }
   };
 
-  const handleUpdateItem = async (updatedItem: typeof ScriptItemType) => {
+  const handleUpdateItem = async (updatedItem: ScriptItemType) => {
     try {
-      const result = await updateScriptItem(updatedItem.id, {
-        type: updatedItem.type,
-        text: updatedItem.text,
-        characterId: updatedItem.character,
-        lighting: updatedItem.lighting,
-        sound: updatedItem.sound,
-        image: updatedItem.image,
-        staging: updatedItem.staging,
-        movement:
-          updatedItem.type === "movement"
-            ? {
-                characterId: updatedItem.movement?.characterId || "",
-                from: updatedItem.movement?.from || "",
-                to: updatedItem.movement?.to || "",
-                description: updatedItem.movement?.description,
-              }
-            : undefined,
-      });
-
-      if (result.success) {
-        setScript(script.map((item) => (item.id === updatedItem.id ? updatedItem : item)));
+      const result = await updateScriptItem(updatedItem.id, updatedItem);
+      if (result.success && result.data) {
+        setScript(script.map((item) => (item.id === updatedItem.id ? result.data as ScriptItemWithRelations : item)));
         toast("Élément mis à jour", {
           description: "L'élément a été mis à jour avec succès",
         });
@@ -388,8 +133,6 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId, scrip
       toast.error("Erreur", {
         description: "Une erreur est survenue lors de la mise à jour de l'élément",
       });
-    } finally {
-      setIsAddItemDialogOpen(false);
     }
   };
 
@@ -484,7 +227,9 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId, scrip
     linkElement.click();
   };
 
-  const handleImportComplete = () => {
+  const handleImportComplete = (data: ScriptWithRelations) => {
+    setScript(data.items);
+    setCharacters(data.characters);
     router.refresh();
   };
 
@@ -516,7 +261,7 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId, scrip
               Aperçu
             </Button>
           </Link>
-          <ScriptPDFGenerator script={script} characters={characters} />
+          <ScriptPDFGenerator script={initialScript} />
           <DeleteScriptButton scriptId={scriptId} scriptName={scriptName} />
         </div>
       </div>
@@ -551,7 +296,6 @@ export function ScriptEditor({ initialScript, initialCharacters, scriptId, scrip
                     key={item.id}
                     item={item}
                     characters={characters}
-                    characterColor={getCharacterColor(item.character || "")}
                     onUpdate={handleUpdateItem}
                     onDelete={handleDeleteItem}
                     onAddBefore={(newItem) => handleAddItemAtPosition(newItem, item.id, "before")}

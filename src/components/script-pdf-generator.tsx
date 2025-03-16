@@ -3,7 +3,6 @@
 import { useState, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { FileTextIcon } from "lucide-react";
-import { Character, ScriptItemType } from "./script-editor";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +13,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScriptWithRelations } from "@/lib/types";
 
 // PDF styles definition
 const styles = {
@@ -114,20 +114,12 @@ const styles = {
 };
 
 interface ScriptPDFGeneratorProps {
-  script: Array<typeof ScriptItemType & {
-    id: string;
-    type: "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement";
-  }>;
-  characters: Array<typeof Character & {
-    id: string;
-    realName: string;
-    stageName: string;
-    role: string;
-    color: string;
-  }>;
+  script: ScriptWithRelations;
 }
 
-export const ScriptPDFGenerator = memo(function ScriptPDFGenerator({ script, characters }: ScriptPDFGeneratorProps) {
+export const ScriptPDFGenerator = memo(function ScriptPDFGenerator({ script }: ScriptPDFGeneratorProps) {
+  const characters = script.characters;
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCharacters, setSelectedCharacters] = useState<string[]>([]);
@@ -147,45 +139,45 @@ export const ScriptPDFGenerator = memo(function ScriptPDFGenerator({ script, cha
           <Page size="A4" style={pdfStyles.page}>
             <Text style={pdfStyles.title}>Theatre Script</Text>
             
-            {script.map((item, index: number) => (
+            {script.items.map((item, index: number) => (
               <View key={index} style={pdfStyles.section}>
                 <Text style={pdfStyles.lineNumber}>
                   {(index + 1).toString().padStart(2, '0')}
                 </Text>
                 
                 <View style={pdfStyles.content}>
-                  {item.type === "dialogue" && item.character && (
+                  {item.type === "dialogue" && item.dialogue && (
                     <>
                       <Text style={[
                         pdfStyles.dialogueHeader,
-                        { color: characters.find((c) => c.id === item.character)?.color || "#000000" },
-                        selectedCharacters.includes(item.character) ? pdfStyles.highlightedText : {}
+                        { color: characters.find((c) => c.id === item.dialogue?.characterId)?.color || "#000000" },
+                        selectedCharacters.includes(item.dialogue?.characterId || "") ? pdfStyles.highlightedText : {}
                       ]}>
-                        {`${characters.find((c) => c.id === item.character)?.stageName || "Character"} (${characters.find((c) => c.id === item.character)?.realName || "Unknown"}):`}
+                        {`${characters.find((c) => c.id === item.dialogue?.characterId)?.stageName || "Character"} (${characters.find((c) => c.id === item.dialogue?.characterId)?.realName || "Unknown"}):`}
                       </Text>
                       <Text style={[
                         pdfStyles.dialogueText,
-                        selectedCharacters.includes(item.character) ? pdfStyles.highlightedText : {}
-                      ]}>{item.text}</Text>
+                        selectedCharacters.includes(item.dialogue?.characterId || "") ? pdfStyles.highlightedText : {}
+                      ]}>{item.dialogue.text}</Text>
                     </>
                   )}
                   
                   {item.type === "narration" && (
                     <>
-                      {item.character && (
+                      {item.narration && (
                         <Text style={[
                           pdfStyles.dialogueHeader,
-                          { color: characters.find((c) => c.id === item.character)?.color || "#000000" },
-                          selectedCharacters.includes(item.character) ? pdfStyles.highlightedText : {}
+                          { color: characters.find((c) => c.id === item.narration?.characterId)?.color || "#000000" },
+                          selectedCharacters.includes(item.narration?.characterId || "") ? pdfStyles.highlightedText : {}
                         ]}>
-                          {`Narrateur - ${characters.find((c) => c.id === item.character)?.stageName || "Personnage"} (${characters.find((c) => c.id === item.character)?.realName || "Inconnu"}):`}
+                          {`Narrateur - ${characters.find((c) => c.id === item.narration?.characterId)?.stageName || "Personnage"} (${characters.find((c) => c.id === item.narration?.characterId)?.realName || "Inconnu"}):`}
                         </Text>
                       )}
                       <Text style={[
                         pdfStyles.narrationText,
-                        item.character ? { marginLeft: 16 } : {},
-                        item.character && selectedCharacters.includes(item.character) ? pdfStyles.highlightedText : {}
-                      ]}>{item.text}</Text>
+                        item.narration ? { marginLeft: 16 } : {},
+                        item.narration && selectedCharacters.includes(item.narration?.characterId || "") ? pdfStyles.highlightedText : {}
+                      ]}>{item.narration?.text || ""}</Text>
                     </>
                   )}
                   

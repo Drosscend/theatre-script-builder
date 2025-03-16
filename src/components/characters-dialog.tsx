@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Character } from "./script-editor";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { characterSchema, type CharacterFormValues } from "@/lib/schema";
@@ -20,12 +19,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Character } from "@prisma/client";
 
 interface CharactersDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  characters: (typeof Character)[];
-  setCharacters: (characters: (typeof Character)[]) => void;
+  characters: Character[];
+  setCharacters: (characters: Character[]) => void;
   scriptId: string;
 }
 
@@ -94,7 +94,7 @@ const CharactersDialog = memo(function CharactersDialog({ open, onOpenChange, ch
     }
   }, [setCharacters]);
 
-  const handleUpdateCharacter = useCallback(async (id: string, field: keyof typeof Character, value: string) => {
+    const handleUpdateCharacter = useCallback(async (id: string, field: keyof Character, value: string) => {
     const updatedCharacters = characters.map((char) => (char.id === id ? { ...char, [field]: value } : char));
     setCharacters(updatedCharacters);
 

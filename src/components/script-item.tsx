@@ -7,48 +7,28 @@ import { useState, memo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import AddItemDialog from "./add-item-dialog";
+import { AddItemDialog } from "./add-item-dialog";
 import EditItemDialog from "./edit-item-dialog";
-import { Character, ScriptItemType } from "../components/script-editor";
+import { type ScriptItem as ScriptItemType, type ExistingLighting, type ExistingSound } from "@/lib/schema";
+import { Character } from "@prisma/client";
+import { type ScriptItemWithRelations } from "@/lib/types";
 
 interface ScriptItemProps {
-  item: typeof ScriptItemType & {
-    id: string;
-    type: "dialogue" | "narration" | "lighting" | "sound" | "image" | "staging" | "movement";
-  };
-  characters: Array<
-    typeof Character & {
-      id: string;
-      realName: string;
-      stageName: string;
-      role: string;
-      color: string;
-    }
-  >;
-  characterColor?: string;
-  onUpdate: (item: typeof ScriptItemType) => void;
+  item: ScriptItemWithRelations;
+  characters: Character[];
+  onUpdate: (item: ScriptItemType) => void;
   onDelete: (id: string) => void;
-  onAddBefore: (item: typeof ScriptItemType) => void;
-  onAddAfter: (item: typeof ScriptItemType) => void;
+  onAddBefore: (item: ScriptItemType) => void;
+  onAddAfter: (item: ScriptItemType) => void;
   isSelected: boolean;
   onSelect: (isSelected: boolean) => void;
-  existingLightings: Array<{
-    id: string;
-    position: string;
-    color: string;
-  }>;
-  existingSounds: Array<{
-    id: string;
-    url: string;
-    timecode: string;
-    description?: string;
-  }>;
+  existingLightings: ExistingLighting[];
+  existingSounds: ExistingSound[];
 }
 
 function ScriptItem({
   item,
   characters,
-  characterColor,
   onUpdate,
   onDelete,
   onAddBefore,
@@ -75,10 +55,11 @@ function ScriptItem({
   const getItemLabel = useCallback(() => {
     switch (item.type) {
       case "dialogue":
-        const character = item.character ? characters.find((c) => c.id === item.character) : undefined;
-        return `Dialogue - ${character?.stageName || "Personnage inconnu"}`;
+        const characterDialogue = item.dialogue?.characterId ? characters.find((c) => c.id === item.dialogue?.characterId) : undefined;
+        return `Dialogue - ${characterDialogue?.stageName || "Personnage inconnu"}`;
       case "narration":
-        return "Narration";
+        const characterNarration = item.narration?.characterId ? characters.find((c) => c.id === item.narration?.characterId) : undefined;
+        return `Narration - ${characterNarration?.stageName || "Personnage inconnu"}`;
       case "lighting":
         return "Éclairage";
       case "sound":
@@ -95,7 +76,7 @@ function ScriptItem({
       default:
         return "Élément inconnu";
     }
-  }, [item.type, item.character, item.movement?.characterId, characters]);
+  }, [item.type, characters]);
 
   /**
    * Get a preview text for the script item to display in the list
@@ -103,26 +84,26 @@ function ScriptItem({
   const getItemPreview = useCallback(() => {
     switch (item.type) {
       case "dialogue":
-        return item.text || "";
+        return item.dialogue?.text || "";
       case "narration":
-        return item.text || "";
+        return item.narration?.text || "";
       case "lighting":
-        if (!item.lighting) return "Informations d'éclairage non disponibles";
-        if (item.lighting.isOff) return `Extinction des lumières à ${item.lighting.position || ""}`;
-        return `Position: ${item.lighting.position || ""}, Couleur: ${item.lighting.color || ""}`;
+        if (!item.id) return "Informations d'éclairage non disponibles";
+        if (item.lighting?.isOff) return `Extinction des lumières à ${item.lighting?.position || ""}`;
+        return `Position: ${item.lighting?.position || ""}, Couleur: ${item.lighting?.color || ""}`;
       case "sound":
-        if (!item.sound) return "Informations sonores non disponibles";
-        if (item.sound.isStop) return `Arrêt de la musique: ${item.sound.description || ""}`;
-        return `${item.sound.description || ""} (${item.sound.timecode || ""})`;
+        if (!item.id) return "Informations sonores non disponibles";
+        if (item.sound?.isStop) return `Arrêt de la musique: ${item.sound?.description || ""}`;
+        return `${item.sound?.description || ""} (${item.sound?.timecode || ""})`;
       case "image":
-        if (!item.image) return "Informations d'image non disponibles";
-        return `${item.image.caption || "Image"} (${item.image.width || "?"}x${item.image.height || "?"})`;
+        if (!item.id) return "Informations d'image non disponibles";
+        return `${item.image?.caption || "Image"} (${item.image?.width || "?"}x${item.image?.height || "?"})`;
       case "staging":
-        if (!item.staging) return "Informations de mise en scène non disponibles";
-        return `${item.staging.item || ""} - Position: ${item.staging.position || ""} - ${item.staging.description || ""}`;
+        if (!item.id) return "Informations de mise en scène non disponibles";
+        return `${item.staging?.item || ""} - Position: ${item.staging?.position || ""} - ${item.staging?.description || ""}`;
       case "movement":
-        if (!item.movement) return "Informations de mouvement non disponibles";
-        return `${item.movement.from || ""} → ${item.movement.to || ""}`;
+        if (!item.id) return "Informations de mouvement non disponibles";
+        return `${item.movement?.from || ""} → ${item.movement?.to || ""}`;
       default:
         return "";
     }
@@ -132,13 +113,11 @@ function ScriptItem({
    * Get the color for the item's border based on its type and associated character
    */
   const getBorderColor = useCallback(() => {
-    if (item.type === "dialogue" && characterColor) {
-      return characterColor;
-    }
-
     switch (item.type) {
       case "narration":
         return "#94a3b8"; // slate-400
+      case "dialogue":
+        return "#fbbf24"; // amber-400
       case "lighting":
         return "#fbbf24"; // amber-400
       case "sound":
@@ -152,7 +131,7 @@ function ScriptItem({
       default:
         return "#e2e8f0"; // slate-200
     }
-  }, [item.type, characterColor]);
+  }, [item.type]);
 
   const handleDelete = useCallback(() => {
     onDelete(item.id);
@@ -245,8 +224,6 @@ export default memo(ScriptItem, (prevProps, nextProps) => {
   return (
     prevProps.item.id === nextProps.item.id &&
     prevProps.isSelected === nextProps.isSelected &&
-    prevProps.characterColor === nextProps.characterColor &&
-    prevProps.item.text === nextProps.item.text &&
     prevProps.item.type === nextProps.item.type &&
     JSON.stringify(prevProps.item) === JSON.stringify(nextProps.item) &&
     prevProps.characters.length === nextProps.characters.length
