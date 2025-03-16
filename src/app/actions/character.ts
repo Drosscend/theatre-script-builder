@@ -3,102 +3,105 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { characterSchema } from "@/lib/schema";
-import type { CharacterFormValues } from "@/lib/schema";
 import { z } from "zod";
+import { action } from "@/lib/safe-action";
 
 // Créer un nouveau personnage
-export async function createCharacter(scriptId: string, data: CharacterFormValues) {
-  try {
-    const validatedData = characterSchema.parse(data);
-
-    const character = await prisma.character.create({
-      data: {
-        ...validatedData,
-        scriptId,
-      },
+export const createCharacter = action
+  .schema(characterSchema)
+  .schema(async (prevSchema) => {
+    return prevSchema.extend({
+      scriptId: z.string()
     });
+  })
+  .action(async ({ parsedInput }) => {
+    try {
+      const character = await prisma.character.create({
+        data: {
+          ...parsedInput,
+        },
+      });
 
-    revalidatePath(`/scripts/${scriptId}`);
-    revalidatePath(`/scripts/${scriptId}/apercu`);
-    return { success: true, data: character };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return { success: false, error: error.errors };
+      revalidatePath(`/scripts/${parsedInput.scriptId}`);
+      revalidatePath(`/scripts/${parsedInput.scriptId}/apercu`);
+      return { data: character };
+    } catch (error) {
+      throw new Error("Une erreur est survenue lors de la création du personnage");
     }
-    return { success: false, error: "Une erreur est survenue lors de la création du personnage" };
-  }
-}
-
-// Récupérer tous les personnages d'un script
-export async function getCharacters(scriptId: string) {
-  try {
-    const characters = await prisma.character.findMany({
-      where: { scriptId },
-      orderBy: { stageName: "asc" },
-    });
-
-    return { success: true, data: characters };
-  } catch (error) {
-    return { success: false, error: "Une erreur est survenue lors de la récupération des personnages" };
-  }
-}
+  });
 
 // Mettre à jour un personnage
-export async function updateCharacter(id: string, data: CharacterFormValues) {
-  try {
-    const validatedData = characterSchema.parse(data);
-
-    const character = await prisma.character.findUnique({
-      where: { id },
-      select: { scriptId: true },
+export const updateCharacter = action
+  .schema(characterSchema)
+  .schema(async (prevSchema) => {
+    return prevSchema.extend({
+      id: z.string()
     });
+  })
+  .action(async ({ parsedInput }) => {
+    try {
+      const character = await prisma.character.findUnique({
+        where: { id: parsedInput.id },
+        select: { scriptId: true },
+      });
 
-    if (!character) {
-      return { success: false, error: "Personnage non trouvé" };
+      if (!character) {
+        throw new Error("Personnage non trouvé");
+      }
+
+      const updatedCharacter = await prisma.character.update({
+        where: { id: parsedInput.id },
+        data: parsedInput,
+      });
+
+      revalidatePath(`/scripts/${character.scriptId}`);
+      revalidatePath(`/scripts/${character.scriptId}/apercu`);
+      return { data: updatedCharacter };
+    } catch (error) {
+      throw new Error("Une erreur est survenue lors de la mise à jour du personnage");
     }
-
-    const updatedCharacter = await prisma.character.update({
-      where: { id },
-      data: validatedData,
-    });
-
-    revalidatePath(`/scripts/${character.scriptId}`);
-    revalidatePath(`/scripts/${character.scriptId}/apercu`);
-    return { success: true, data: updatedCharacter };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return { success: false, error: error.errors };
-    }
-    return { success: false, error: "Une erreur est survenue lors de la mise à jour du personnage" };
-  }
-}
+  });
 
 // Supprimer un personnage
-export async function deleteCharacter(id: string) {
-  try {
-    const character = await prisma.character.findUnique({
-      where: { id },
-      select: { scriptId: true },
-    });
+export const deleteCharacter = action
+  .schema(z.object({
+    id: z.string()
+  }))
+  .action(async ({ parsedInput }) => {
+    try {
+      const character = await prisma.character.findUnique({
+        where: { id: parsedInput.id },
+        select: { scriptId: true },
+      });
 
-    if (!character) {
-      return { success: false, error: "Personnage non trouvé" };
+      if (!character) {
+        throw new Error("Personnage non trouvé");
+      }
+
+      await prisma.character.delete({
+        where: { id: parsedInput.id },
+      });
+
+      revalidatePath(`/scripts/${character.scriptId}`);
+      revalidatePath(`/scripts/${character.scriptId}/apercu`);
+      return { success: true };
+    } catch (error) {
+      throw new Error("Une erreur est survenue lors de la suppression du personnage");
     }
-
-    await prisma.character.delete({
-      where: { id },
-    });
-
-    revalidatePath(`/scripts/${character.scriptId}`);
-    revalidatePath(`/scripts/${character.scriptId}/apercu`);
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: "Une erreur est survenue lors de la suppression du personnage" };
-  }
-}
-
-export async function deleteAllCharacters(scriptId: string) {
-  await prisma.character.deleteMany({
-    where: { scriptId },
   });
-}
+
+// Supprimer tous les personnages
+export const deleteAllCharacters = action
+  .schema(z.object({
+    scriptId: z.string()
+  }))
+  .action(async ({ parsedInput }) => {
+    try {
+      await prisma.character.deleteMany({
+        where: { scriptId: parsedInput.scriptId },
+      });
+      return { success: true };
+    } catch (error) {
+      throw new Error("Une erreur est survenue lors de la suppression des personnages");
+    }
+  });

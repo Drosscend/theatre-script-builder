@@ -48,7 +48,7 @@ export function ImportScriptDialog({ open, onOpenChange, scriptId, onImportCompl
         // Supprimer les éléments existants
         toast.loading("Suppression des données existantes...", { id: idToast });
         await Promise.all([
-          deleteAllCharacters(scriptId),
+          deleteAllCharacters({ scriptId }),
           deleteAllScriptItems(scriptId)
         ]);
         toast.success("Suppression des données existantes terminée", { id: idToast });

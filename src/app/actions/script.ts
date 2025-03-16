@@ -21,19 +21,6 @@ export const createScript = action
     }
   });
 
-export const getScripts = action
-  .action(async () => {
-    try {
-      const scripts = await prisma.script.findMany({
-        orderBy: { updatedAt: "desc" },
-      });
-
-      return { data: scripts };
-    } catch (error) {
-      throw new Error("Une erreur est survenue lors de la récupération des scripts");
-    }
-  });
-
 export const deleteScript = action
   .schema(z.object({ id: z.string() }))
   .action(async ({ parsedInput }) => {

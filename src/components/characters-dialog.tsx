@@ -20,12 +20,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Character } from "@prisma/client";
+import { useAction } from "next-safe-action/hooks";
 
 interface CharactersDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   characters: Character[];
-  setCharacters: (characters: Character[]) => void;
+  setCharacters: React.Dispatch<React.SetStateAction<Character[]>>;
   scriptId: string;
 }
 
@@ -43,58 +44,68 @@ const CharactersDialog = memo(function CharactersDialog({ open, onOpenChange, ch
     mode: "onChange",
   });
 
+  const { executeAsync: executeCreateCharacter } = useAction(createCharacter, {
+    onSuccess: ({ data }) => {
+      if (data?.data) {
+        const newCharacter = data.data as Character;
+        setCharacters((prev: Character[]) => [...prev, newCharacter]);
+        toast.success("Personnage ajouté", {
+          description: "Le personnage a été ajouté avec succès",
+        });
+        form.reset();
+      }
+    },
+    onError: ({ error }) => {
+      toast.error("Erreur", {
+        description: error.serverError || "Une erreur est survenue lors de l'ajout du personnage",
+      });
+    },
+  });
+
+  const { execute: executeDeleteCharacter } = useAction(deleteCharacter, {
+    onSuccess: () => {
+      toast.success("Personnage supprimé", {
+        description: "Le personnage a été supprimé avec succès",
+      });
+    },
+    onError: ({ error }) => {
+      toast.error("Erreur", {
+        description: error.serverError || "Une erreur est survenue lors de la suppression du personnage",
+      });
+    },
+  });
+
+  const { execute: executeUpdateCharacter } = useAction(updateCharacter, {
+    onError: ({ error }) => {
+      toast.error("Erreur", {
+        description: error.serverError || "Une erreur est survenue lors de la mise à jour du personnage",
+      });
+    },
+  });
+
   const onSubmit = useCallback(async (data: CharacterFormValues) => {
     setIsLoading(true);
     try {
-      const result = await createCharacter(scriptId, data);
-
-      if (result.success && result.data) {
-        setCharacters([...characters, result.data]);
-        toast("Personnage ajouté", {
-          description: "Le personnage a été ajouté avec succès",
-        });
-
-        // Reset form
-        form.reset();
-      } else {
-        toast.error("Erreur", {
-          description: "Une erreur est survenue lors de l'ajout du personnage",
-        });
-      }
-    } catch (error) {
-      toast.error("Erreur", {
-        description: "Une erreur est survenue lors de l'ajout du personnage",
+      await executeCreateCharacter({
+        ...data,
+        scriptId,
       });
     } finally {
       setIsLoading(false);
     }
-  }, [scriptId, setCharacters, form]);
+  }, [executeCreateCharacter, scriptId]);
 
   const handleDeleteCharacter = useCallback(async (id: string) => {
     setIsLoading(true);
     try {
-      const result = await deleteCharacter(id);
-
-      if (result.success) {
-        setCharacters(characters.filter((char) => char.id !== id));
-        toast("Personnage supprimé", {
-          description: "Le personnage a été supprimé avec succès",
-        });
-      } else {
-        toast.error("Erreur", {
-          description: "Une erreur est survenue lors de la suppression du personnage",
-        });
-      }
-    } catch (error) {
-      toast.error("Erreur", {
-        description: "Une erreur est survenue lors de la suppression du personnage",
-      });
+      await executeDeleteCharacter({ id });
+      setCharacters(characters.filter((char) => char.id !== id));
     } finally {
       setIsLoading(false);
     }
-  }, [setCharacters]);
+  }, [executeDeleteCharacter, setCharacters, characters]);
 
-    const handleUpdateCharacter = useCallback(async (id: string, field: keyof Character, value: string) => {
+  const handleUpdateCharacter = useCallback(async (id: string, field: keyof Character, value: string) => {
     const updatedCharacters = characters.map((char) => (char.id === id ? { ...char, [field]: value } : char));
     setCharacters(updatedCharacters);
 
@@ -102,18 +113,17 @@ const CharactersDialog = memo(function CharactersDialog({ open, onOpenChange, ch
     if (!updatedChar) return;
 
     try {
-      await updateCharacter(id, {
+      await executeUpdateCharacter({
+        id,
         realName: updatedChar.realName,
         stageName: updatedChar.stageName,
         role: updatedChar.role,
         color: updatedChar.color,
       });
     } catch (error) {
-      toast.error("Erreur", {
-        description: "Une erreur est survenue lors de la mise à jour du personnage",
-      });
+      // Error will be handled by onError callback
     }
-  }, [setCharacters]);
+  }, [executeUpdateCharacter, setCharacters, characters]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -130,35 +140,37 @@ const CharactersDialog = memo(function CharactersDialog({ open, onOpenChange, ch
               <p className="text-sm text-muted-foreground">{`Aucun personnage n'a été ajouté.`}</p>
             ) : (
               <div className="space-y-3">
-                <ScrollArea className="h-[calc(80vh-250px)]">
-                  {characters.map((char) => (
-                    <div key={char.id} className="grid grid-cols-[1fr_1fr_1fr_80px_40px] gap-2 items-center">
-                      <Input
-                        value={char.realName}
-                        onChange={(e) => handleUpdateCharacter(char.id, "realName", e.target.value)}
-                        placeholder="Nom réel"
-                      />
-                      <Input
-                        value={char.stageName}
-                        onChange={(e) => handleUpdateCharacter(char.id, "stageName", e.target.value)}
-                        placeholder="Nom sur scène"
-                      />
-                      <Input 
-                        value={char.role} 
-                        onChange={(e) => handleUpdateCharacter(char.id, "role", e.target.value)} 
-                        placeholder="Rôle" 
-                      />
-                      <Input
-                        type="color"
-                        value={char.color}
-                        onChange={(e) => handleUpdateCharacter(char.id, "color", e.target.value)}
-                        className="h-10 p-1"
-                      />
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteCharacter(char.id)} disabled={isLoading}>
-                        <Trash2Icon />
-                      </Button>
-                    </div>
-                  ))}
+                <ScrollArea className="h-[300px] pr-4" type="auto">
+                  <div className="space-y-3">
+                    {characters.map((char) => (
+                      <div key={char.id} className="grid grid-cols-[1fr_1fr_1fr_80px_40px] gap-2 items-center">
+                        <Input
+                          value={char.realName}
+                          onChange={(e) => handleUpdateCharacter(char.id, "realName", e.target.value)}
+                          placeholder="Nom réel"
+                        />
+                        <Input
+                          value={char.stageName}
+                          onChange={(e) => handleUpdateCharacter(char.id, "stageName", e.target.value)}
+                          placeholder="Nom sur scène"
+                        />
+                        <Input 
+                          value={char.role} 
+                          onChange={(e) => handleUpdateCharacter(char.id, "role", e.target.value)} 
+                          placeholder="Rôle" 
+                        />
+                        <Input
+                          type="color"
+                          value={char.color}
+                          onChange={(e) => handleUpdateCharacter(char.id, "color", e.target.value)}
+                          className="h-10 p-1"
+                        />
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteCharacter(char.id)} disabled={isLoading}>
+                          <Trash2Icon />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 </ScrollArea>
               </div>
             )}
