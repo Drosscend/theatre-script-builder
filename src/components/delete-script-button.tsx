@@ -4,7 +4,7 @@ import { deleteScript } from "@/app/actions/script";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { startTransition, useState, useTransition } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,6 +17,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { useAction } from "next-safe-action/hooks";
 
 interface DeleteScriptButtonProps {
   scriptId: string;
@@ -25,34 +26,24 @@ interface DeleteScriptButtonProps {
 
 export function DeleteScriptButton({ scriptId, scriptName }: DeleteScriptButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
+  const { executeAsync, isPending } = useAction(deleteScript, {
+    onError: ({error}) => {
+      toast.error("Erreur", {
+        description: error.serverError || "Une erreur est survenue lors de la suppression du script",
+      });
+    },
+    onSuccess: () => {
+      toast.success("Script supprimé", {
+        description: "Le script a été supprimé avec succès",
+      });
+      router.push("/");
+    }
+  });
 
   const handleDelete = async () => {
-    setIsDeleting(true);
-    try {
-      const result = await deleteScript(scriptId);
-
-      if (result.success) {
-        toast("Script supprimé", {
-          description: "Le script a été supprimé avec succès",
-        });
-        router.push("/");
-      } else {
-        toast.error("Erreur", {
-          description: "Une erreur est survenue lors de la suppression du script",
-        });
-        setIsOpen(false);
-      }
-    } catch (error) {
-      toast.error("Erreur", {
-        description: "Une erreur est survenue lors de la suppression du script",
-      });
-      setIsOpen(false);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
+    await executeAsync({ id: scriptId });
+  }
 
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
@@ -70,16 +61,16 @@ export function DeleteScriptButton({ scriptId, scriptName }: DeleteScriptButtonP
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
+          <AlertDialogCancel disabled={isPending}>Annuler</AlertDialogCancel>
           <AlertDialogAction
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.preventDefault();
               handleDelete();
             }}
-            disabled={isDeleting}
+            disabled={isPending}
             className="bg-destructive hover:bg-destructive/90"
           >
-            {isDeleting ? "Suppression..." : "Supprimer"}
+            {isPending ? "Suppression..." : "Supprimer"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -1,12 +1,27 @@
-import { getScripts } from "@/app/actions/script";
 import { PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { prisma } from "@/lib/prisma";
+
+async function getScripts() {
+  const scripts = await prisma.script.findMany({
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      updatedAt: true,
+    },
+    orderBy: {
+      updatedAt: "desc",
+    },
+  });
+
+  return scripts;
+}
 
 export default async function HomePage() {
-  const result = await getScripts();
-  const scripts = result.success && result.data ? result.data : [];
+  const scripts = await getScripts();
 
   return (
     <div className="container mx-auto p-4 space-y-8">

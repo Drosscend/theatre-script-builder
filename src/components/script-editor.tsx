@@ -233,11 +233,6 @@ export function ScriptEditor({ initialScript, scriptId, scriptName }: ScriptEdit
     router.refresh();
   };
 
-  const getCharacterColor = (characterId: string) => {
-    const character = characters.find((c) => c.id === characterId);
-    return character?.color || "#e2e8f0";
-  };
-
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">

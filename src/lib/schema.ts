@@ -83,6 +83,12 @@ export const scriptItemSchema = z.discriminatedUnion("type", [
   movementSchema,
 ]);
 
+// Script Schema
+export const scriptSchema = z.object({
+  name: z.string().min(1, "Le titre est requis"),
+  description: z.string().optional(),
+});
+
 // Types
 export type CharacterFormValues = z.infer<typeof characterSchema>;
 export type DialogueFormValues = z.infer<typeof dialogueSchema>;
@@ -93,6 +99,7 @@ export type ImageFormValues = z.infer<typeof imageSchema>;
 export type StagingFormValues = z.infer<typeof stagingSchema>;
 export type MovementFormValues = z.infer<typeof movementSchema>;
 export type ScriptItemFormValues = z.infer<typeof scriptItemSchema>;
+export type ScriptFormValues = z.infer<typeof scriptSchema>;
 
 // Interfaces
 export type Character = z.infer<typeof characterSchema>;

@@ -3,60 +3,42 @@
 import { createScript } from "@/app/actions/script";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { z } from "zod";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-
-const formSchema = z.object({
-  name: z.string().min(1, "Le titre est requis"),
-  description: z.string().optional(),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+import { scriptSchema, ScriptFormValues } from "@/lib/schema";
+import { useAction } from "next-safe-action/hooks";
 
 export default function NewScriptPage() {
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { executeAsync, isPending } = useAction(createScript, {
+    onError: ({error}) => {
+      toast.error("Erreur", {
+        description: error.serverError || "Une erreur est survenue lors de la création du script",
+      });
+    },
+    onSuccess: ({data}) => {
+      toast.success("Script créé", {
+        description: "Votre script a été créé avec succès",
+      });
+      router.push(`/scripts/${data?.data.id}`);
+    }
+  });
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<ScriptFormValues>({
+    resolver: zodResolver(scriptSchema),
     defaultValues: {
       name: "",
       description: "",
     },
   });
 
-  async function onSubmit(values: FormValues) {
-    setIsSubmitting(true);
-
-    try {
-      const result = await createScript(values);
-
-      if (result.success && result.data) {
-        toast("Script créé", {
-          description: "Votre script a été créé avec succès",
-        });
-        router.push(`/scripts/${result.data.id}`);
-      } else {
-        toast.error("Erreur", {
-          description: Array.isArray(result.error)
-            ? result.error.map((issue) => issue.message).join(", ")
-            : result.error || "Une erreur est survenue lors de la création du script",
-        });
-      }
-    } catch (error) {
-      toast.error("Erreur", {
-        description: "Une erreur est survenue lors de la création du script",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+  async function onSubmit(values: ScriptFormValues) {
+    await executeAsync(values);
   }
 
   return (
@@ -99,14 +81,23 @@ export default function NewScriptPage() {
                 )}
               />
 
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
-                  Annuler
-                </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Création..." : "Créer le script"}
-                </Button>
-              </div>
+              <CardFooter className="flex justify-end space-x-2">
+                <CardAction>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => router.back()} 
+                    disabled={isPending}
+                  >
+                    Annuler
+                  </Button>
+                </CardAction>
+                <CardAction>
+                  <Button type="submit" disabled={isPending}>
+                    {isPending ? "Création..." : "Créer le script"}
+                  </Button>
+                </CardAction>
+              </CardFooter>
             </form>
           </Form>
         </CardContent>
