@@ -29,6 +29,7 @@ import {
   scriptItemSchema,
 } from "@/lib/schema";
 import { Character } from "@prisma/client";
+import { ScrollArea } from "./ui/scroll-area";
 
 interface AddItemDialogProps {
   open: boolean;
@@ -140,115 +141,118 @@ export const AddItemDialog = memo(function AddItemDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Type d'élément</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={(value: ScriptItemFormValues["type"]) => {
-                      field.onChange(value);
-                      const defaultValues = {
-                        type: value,
-                        ...(value === "dialogue" || value === "narration" ? {
-                          text: "",
-                          character: "",
-                        } : value === "lighting" ? {
-                          lightPosition: "",
-                          lightColor: "#ffffff",
-                          lightIsOff: false,
-                          selectedLighting: "",
-                          useExistingLighting: false,
-                        } : value === "sound" ? {
-                          soundUrl: "",
-                          soundType: "url" as const,
-                          soundName: "",
-                          soundTimecode: "",
-                          soundDescription: "",
-                          soundIsStop: false,
-                          selectedSound: "",
-                          useExistingSound: false,
-                        } : value === "image" ? {
-                          imageUrl: "",
-                          imageType: "url" as const,
-                          imageWidth: 800,
-                          imageHeight: 600,
-                          imageCaption: "",
-                        } : value === "staging" ? {
-                          stagingItem: "",
-                          stagingPosition: "",
-                          stagingDescription: "",
-                        } : value === "movement" ? {
-                          movementCharacter: "",
-                          movementFrom: "",
-                          movementTo: "",
-                          movementDescription: "",
-                        } : {}),
-                      } as ScriptItemFormValues;
-                      form.reset(defaultValues);
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Sélectionner un type d'élément" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="dialogue">Dialogue</SelectItem>
-                      <SelectItem value="narration">Narration</SelectItem>
-                      <SelectItem value="lighting">Éclairage</SelectItem>
-                      <SelectItem value="sound">Son</SelectItem>
-                      <SelectItem value="image">Image</SelectItem>
-                      <SelectItem value="staging">Mise en scène</SelectItem>
-                      <SelectItem value="movement">Mouvement</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <ScrollArea className="h-[300px] lg:h-[400px] xl:h-auto" type="auto">
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Type d'élément</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={(value: ScriptItemFormValues["type"]) => {
+                          field.onChange(value);
+                          const defaultValues = {
+                            type: value,
+                            ...(value === "dialogue" || value === "narration" ? {
+                              text: "",
+                              character: "",
+                            } : value === "lighting" ? {
+                              lightPosition: "",
+                              lightColor: "#ffffff",
+                              lightIsOff: false,
+                              selectedLighting: "",
+                              useExistingLighting: false,
+                            } : value === "sound" ? {
+                              soundUrl: "",
+                              soundType: "url" as const,
+                              soundName: "",
+                              soundTimecode: "",
+                              soundDescription: "",
+                              soundIsStop: false,
+                              selectedSound: "",
+                              useExistingSound: false,
+                            } : value === "image" ? {
+                              imageUrl: "",
+                              imageType: "url" as const,
+                              imageWidth: 800,
+                              imageHeight: 600,
+                              imageCaption: "",
+                            } : value === "staging" ? {
+                              stagingItem: "",
+                              stagingPosition: "",
+                              stagingDescription: "",
+                            } : value === "movement" ? {
+                              movementCharacter: "",
+                              movementFrom: "",
+                              movementTo: "",
+                              movementDescription: "",
+                            } : {}),
+                          } as ScriptItemFormValues;
+                          form.reset(defaultValues);
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Sélectionner un type d'élément" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="dialogue">Dialogue</SelectItem>
+                          <SelectItem value="narration">Narration</SelectItem>
+                          <SelectItem value="lighting">Éclairage</SelectItem>
+                          <SelectItem value="sound">Son</SelectItem>
+                          <SelectItem value="image">Image</SelectItem>
+                          <SelectItem value="staging">Mise en scène</SelectItem>
+                          <SelectItem value="movement">Mouvement</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {(itemType === "dialogue" || itemType === "narration") && (
+                  <DialogueForm
+                    form={form}
+                    characters={characters}
+                    type={itemType}
+                  />
+                )}
 
-            {(itemType === "dialogue" || itemType === "narration") && (
-              <DialogueForm
-                form={form}
-                characters={characters}
-                type={itemType}
-              />
-            )}
+                {itemType === "lighting" && (
+                  <LightingForm
+                    form={form}
+                    existingLightings={existingLightings}
+                  />
+                )}
 
-            {itemType === "lighting" && (
-              <LightingForm
-                form={form}
-                existingLightings={existingLightings}
-              />
-            )}
+                {itemType === "sound" && (
+                  <SoundForm
+                    form={form}
+                    existingSounds={existingSounds}
+                    onSoundFileChange={onSoundFileChange}
+                  />
+                )}
 
-            {itemType === "sound" && (
-              <SoundForm
-                form={form}
-                existingSounds={existingSounds}
-                onSoundFileChange={onSoundFileChange}
-              />
-            )}
+                {itemType === "image" && (
+                  <ImageForm
+                    form={form}
+                    imagePreview={imagePreview}
+                    onImageFileChange={onImageFileChange}
+                  />
+                )}
 
-            {itemType === "image" && (
-              <ImageForm
-                form={form}
-                imagePreview={imagePreview}
-                onImageFileChange={onImageFileChange}
-              />
-            )}
+                {itemType === "staging" && (
+                  <StagingForm form={form} />
+                )}
 
-            {itemType === "staging" && (
-              <StagingForm form={form} />
-            )}
-
-            {itemType === "movement" && (
-              <MovementForm
-                form={form}
-                characters={characters}
-              />
-            )}
+                {itemType === "movement" && (
+                  <MovementForm
+                    form={form}
+                    characters={characters}
+                  />
+                )}
+              </div>
+            </ScrollArea>
 
             <DialogFooter>
               <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>

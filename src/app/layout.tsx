@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Analytics } from "@vercel/analytics/react"
 import { ThemeProvider } from "@/components/theme-provider"
 import { SiteHeader } from "@/components/site-header"
+import { TailwindIndicator } from "@/components/tailwind-indicator"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,13 +41,14 @@ export default function RootLayout({
           <div className="relative flex min-h-svh flex-col bg-background">
             <div className="border-grid flex flex-1 flex-col">
               <SiteHeader />
-              <main className="flex flex-1 flex-col">
+              <main className="flex flex-1 flex-col container-wrapper">
                 {children}
               </main>
             </div>
           </div>
           <Toaster richColors position="bottom-right"/>
           <Analytics />
+          <TailwindIndicator />
         </ThemeProvider>
       </body>
     </html>
