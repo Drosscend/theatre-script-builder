@@ -26,11 +26,12 @@ export function LightingForm({ form, existingLightings }: LightingFormProps) {
               <Checkbox
                 checked={field.value}
                 onCheckedChange={field.onChange}
+                disabled={existingLightings.length === 0}
               />
             </FormControl>
             <div className="space-y-1 leading-none">
               <FormLabel>
-                Utiliser un éclairage existant
+                Utiliser un éclairage existant {existingLightings.length === 0 ? "(Aucun éclairage disponible)" : ""}
               </FormLabel>
             </div>
           </FormItem>
@@ -47,9 +48,10 @@ export function LightingForm({ form, existingLightings }: LightingFormProps) {
               <Select
                 value={field.value}
                 onValueChange={field.onChange}
-              >
+                disabled={existingLightings.length === 0}
+                >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Sélectionner un éclairage" />
+                  <SelectValue placeholder={existingLightings.length === 0 ? "Aucun éclairage disponible" : "Sélectionner un éclairage"} />
                 </SelectTrigger>
                 <SelectContent>
                   {existingLightings.length > 0 ? (

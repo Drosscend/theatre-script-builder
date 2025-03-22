@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { type UseFormReturn } from "react-hook-form";
 import { type ExistingSound, type ScriptItemFormValues } from "@/lib/schema";
-import { toast } from "sonner";
 
 interface SoundFormProps {
   form: UseFormReturn<ScriptItemFormValues>;
@@ -31,11 +30,12 @@ export function SoundForm({ form, existingSounds, onSoundFileChange }: SoundForm
               <Checkbox
                 checked={field.value}
                 onCheckedChange={field.onChange}
+                disabled={existingSounds.length === 0}
               />
             </FormControl>
             <div className="space-y-1 leading-none">
               <FormLabel>
-                Utiliser un son existant
+                Utiliser un son existant {existingSounds.length === 0 ? "(Aucun son disponible)" : ""}
               </FormLabel>
             </div>
           </FormItem>
@@ -52,9 +52,10 @@ export function SoundForm({ form, existingSounds, onSoundFileChange }: SoundForm
               <Select
                 value={field.value}
                 onValueChange={field.onChange}
+                disabled={existingSounds.length === 0}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Sélectionner un son" />
+                  <SelectValue placeholder={existingSounds.length === 0 ? "Aucun son disponible" : "Sélectionner un son"} />
                 </SelectTrigger>
                 <SelectContent>
                   {existingSounds.length > 0 ? (
